@@ -1,0 +1,20 @@
+agent = 'claude-code'
+
+review_guidelines = """
+Goal: flag issues that make bugs hard to trace.
+
+Flag:
+- Silent failures (misaligned indices, silent NaN propagation, wrong merge keys)
+- Mutable defaults or shared state that could corrupt results across calls
+- Variable shadowing or reuse that obscures what value is in scope
+- Swallowed exceptions without logging or re-raise
+- Non-determinism without a fixed random seed where reproducibility matters
+
+Do not flag:
+- Missing docstrings or type annotations on exploratory/notebook code
+- Lack of input validation on internal helpers
+- Opportunities to abstract or DRY up code
+- Style issues (handled by linter)
+"""
+
+post_commit_batch_size = 5

@@ -1,0 +1,16 @@
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+
+/.quarto/
+**/*.quarto_ipynb
+
+# Quarto
+/.quarto/
+/_book/
+/_freeze/
+/_conv/
+*.quarto_ipynb
+# roborev snapshots
+/.roborev/

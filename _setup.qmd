@@ -1,0 +1,22 @@
+```{python}
+#| code-summary: "Setup: imports and plotting defaults"
+# Make `causalkit` importable whether or not you ran `uv sync` / `pip install -e .`
+import sys
+from pathlib import Path
+
+try:
+    import causalkit
+except ImportError:
+    sys.path.insert(0, str(Path.cwd().resolve() / "src"))
+    import causalkit
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (9, 4), "axes.spines.top": False,
+                     "axes.spines.right": False, "axes.grid": True, "grid.alpha": 0.3})
+pd.set_option("display.precision", 3)
+pd.set_option("display.width", 140)
+pd.set_option("display.max_columns", 20)
+```

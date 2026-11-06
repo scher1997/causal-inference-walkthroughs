@@ -1,0 +1,172 @@
+# Synthetic Control, and Choosing Between SC and DiD {#sec-synth}
+
+::: {.callout-tip title="Walkthrough summary"}
+DiD compares a treated market with an equal-weighted average of controls, which only works if that average shares the treated market's trend. Synthetic control learns non-negative weights summing to one over donor units, chosen to reproduce the treated unit's pre-period path. The constraints keep the counterfactual an interpolation of real units.
+
+Model selection needs out-of-sample checks. In-sample pre-period fit always favors the more flexible method, so the notebook uses a backtest. It holds out the last few pre-treatment periods, fits on the rest, and scores the forecast on that window, where the true effect is zero.
+
+With one treated unit, conventional standard errors do not apply. Placebo-in-space pretends each donor was treated, re-runs the method, and ranks the treated unit's post/pre fit ratio against those placebos. With 30 donors, the smallest possible p-value is 1/31.
+
+Dropping the top-weighted donor roughly halves the estimate and doubles the pre-period error. That fragility is something to investigate, not bury.
+:::
+
+
+**Setting:** one (or a few) treated aggregate units — a city, a region, a market — and a *donor pool* of untreated units. Example: a pricing change launched only in one geographic market.
+
+DiD would compare the treated market to the **equal-weighted average** of the donors. That only works if the average happens to share the treated market's trend. Synthetic control instead **learns weights** so the weighted donor combination reproduces the treated market's pre-period path:
+
+$$\hat w = \arg\min_{w} \sum_{t < T_0} \Big(y_{1t} - \sum_j w_j y_{jt}\Big)^2 \quad \text{s.t. } w_j \ge 0,\ \sum_j w_j = 1$$
+
+The non-negativity and sum-to-one constraints keep the counterfactual an *interpolation* of real markets (no extrapolation) and typically make it sparse and interpretable.
+
+::: {.callout-note title="Workflow"}
+1. Fit SC and a DiD counterfactual with the same interface.
+2. Compare **pre-period fit** (in-sample RMSPE).
+3. Compare **out-of-sample fit** with in-time placebos (backtests) — the honest version of step 2.
+4. Inference via **placebo-in-space** permutation.
+5. Robustness: leave-one-donor-out.
+:::
+
+::: {.callout-note title="Simulated truth"}
+the treated market's effect is **−3.0** after period 30, and its trend is steeper than the average donor's.
+:::
+
+{{< include _setup.qmd >}}
+
+```{python}
+#| label: fig-sc-data
+#| fig-cap: "The treated market against the donor pool and the donor average."
+#| fig-alt: "Line chart of outcome by period. Many grey donor lines and a grey donor-average line rise gently; the red treated-market line rises more steeply and drops after the dashed treatment line."
+from causalkit import simulate, synth
+
+TREAT_TIME, TRUE_EFFECT, TREATED = 30, -3.0, "treated_market"
+wide, true_weights = simulate.synth_panel(effect=TRUE_EFFECT, treat_period=TREAT_TIME, seed=11)
+
+fig, ax = plt.subplots()
+ax.plot(wide.index, wide.drop(columns=TREATED), c="lightgrey", lw=0.8)
+ax.plot(wide.index, wide.drop(columns=TREATED).mean(axis=1), c="grey", lw=2, label="donor average")
+ax.plot(wide.index, wide[TREATED], c="C3", lw=2.5, label="treated market")
+ax.axvline(TREAT_TIME - 0.5, ls="--", c="k")
+ax.set(xlabel="period", ylabel="outcome (e.g. weekly sales)", title="Treated market vs donor pool")
+ax.legend(); plt.show()
+```
+
+## Fit both counterfactuals
+
+```{python}
+#| label: fig-sc-fit
+#| fig-cap: "Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0."
+#| fig-alt: "Two panels. Left: actual treated series with synthetic-control and DiD counterfactual lines. Right: gap between actual and each counterfactual, with a dotted line at the true effect of -3."
+sc = synth.synthetic_control(wide, TREATED, TREAT_TIME)
+dd = synth.did_counterfactual(wide, TREATED, TREAT_TIME)
+
+fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+for res, c in ((sc, "C0"), (dd, "C1")):
+    axes[0].plot(res.counterfactual, c=c, ls="--", label=f"{res.method} counterfactual")
+    axes[1].plot(res.gap, c=c, label=res.method)
+axes[0].plot(wide[TREATED], c="C3", lw=2, label="actual")
+axes[1].axhline(TRUE_EFFECT, c="green", ls=":", label="true effect")
+axes[1].axhline(0, c="k", lw=0.8)
+for ax, t in zip(axes, ("Actual vs counterfactual", "Gap = actual − counterfactual")):
+    ax.axvline(TREAT_TIME - 0.5, ls="--", c="grey"); ax.set(title=t, xlabel="period"); ax.legend()
+plt.show()
+```
+
+```{python}
+#| label: tbl-sc-weights
+#| tbl-cap: "Estimated versus true donor weights for donors with non-trivial weight."
+w = pd.DataFrame({"estimated": sc.weights, "true": true_weights})
+w[(w.estimated > 0.01) | (w.true > 0)].sort_values("estimated", ascending=False)
+```
+
+SC concentrates weight on a handful of donors. It need not recover the *generating* weights exactly — with few latent factors, many donor combinations reproduce the same path — and that's fine: the target is the counterfactual trajectory, not the weights themselves. In @fig-sc-fit, DiD's gap drifts during the *pre*-period — a red flag that its counterfactual doesn't share the treated market's trend.
+
+## Model selection: in-sample and out-of-sample fit
+
+In-sample pre-period RMSPE always favours the more flexible method, so on its own it's not a fair comparison. The **backtest** holds out the last *h* pre-treatment periods, fits on the rest, and scores the "forecast" on the held-out window where the true effect is zero. Pick the method with the lower out-of-sample error — the same logic as cross-validation, respecting time order.
+
+```{python}
+#| label: tbl-sc-selection
+#| tbl-cap: "In-sample and backtest error for each method, with the ATT estimate and the truth."
+rows = []
+for name, method in {"synthetic_control": synth.synthetic_control, "did": synth.did_counterfactual}.items():
+    res = method(wide, TREATED, TREAT_TIME)
+    row = {"method": name, "pre_rmspe (in-sample)": res.pre_rmspe}
+    for h in (4, 6, 8):
+        row[f"backtest_rmspe h={h}"] = synth.backtest(wide, TREATED, TREAT_TIME, h, method)
+    row["ATT estimate"] = res.att
+    rows.append(row)
+pd.DataFrame(rows).set_index("method").assign(true_ATT=TRUE_EFFECT)
+```
+
+## Inference: placebo-in-space
+
+With one treated unit, conventional standard errors don't apply. Instead, pretend each donor was treated, re-run SC, and ask: *is the treated market's post/pre RMSPE ratio extreme relative to the placebos?* The permutation p-value is its rank. Using the **ratio** (not the raw post gap) penalises placebos that fit poorly pre-treatment.
+
+```{python}
+#| label: fig-sc-placebo
+#| fig-cap: "Placebo-in-space inference: gap paths for the treated market and placebo donors (left) and the ranked post/pre RMSPE ratios (right)."
+#| fig-alt: "Left: grey placebo gap lines near zero and one red treated line far below zero after treatment. Right: horizontal bars of RMSPE ratios with the treated market's bar the longest."
+placebos = synth.placebo_in_space(wide, TREATED, TREAT_TIME, method=synth.synthetic_control)
+p_val = synth.permutation_pvalue(placebos, TREATED)
+
+# Common practice: hide placebos with very poor pre-fit when plotting (here > 5x the treated pre-RMSPE).
+good_fit = placebos[placebos.pre_rmspe <= 5 * placebos.loc[TREATED, "pre_rmspe"]]
+
+fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+for u, row in good_fit.iterrows():
+    axes[0].plot(row.gap, c="C3" if u == TREATED else "lightgrey", lw=2.5 if u == TREATED else 0.8)
+axes[0].axvline(TREAT_TIME - 0.5, ls="--", c="k"); axes[0].axhline(0, c="k", lw=0.8)
+axes[0].set(title="Gaps: treated (red) vs placebo donors", xlabel="period")
+ratios = placebos["ratio"].sort_values()
+axes[1].barh(range(len(ratios)), ratios, color=["C3" if u == TREATED else "grey" for u in ratios.index])
+axes[1].set(title=f"post/pre RMSPE ratio — permutation p = {p_val:.3f}", yticks=[])
+plt.show()
+```
+
+With 30 donors the smallest attainable p-value is 1/31 ≈ 0.032: placebo inference needs a reasonably large donor pool.
+
+## Robustness: leave one donor out
+
+If the result hinges on a single donor (which might have had its own shock), it's fragile. Drop each donor with positive weight and refit.
+
+```{python}
+#| label: tbl-sc-loo
+#| tbl-cap: "Leave-one-donor-out refits for each donor with positive weight."
+loo = []
+for donor in sc.weights[sc.weights > 0.01].index:
+    r = synth.synthetic_control(wide.drop(columns=donor), TREATED, TREAT_TIME)
+    loo.append({"dropped": donor, "weight_in_full_fit": sc.weights[donor], "ATT": r.att, "pre_rmspe": r.pre_rmspe})
+pd.DataFrame(loo).assign(full_ATT=sc.att)
+```
+
+In @tbl-sc-loo, dropping most donors barely moves the estimate, but dropping the top-weighted donor roughly halves it *and* doubles the pre-period RMSPE — the remaining pool can't reproduce the treated market as well. That's the kind of dependence to report and investigate (is that donor genuinely the best comparison, or did it have its own shock?), and a natural case for augmented SC, which corrects for imperfect pre-fit.
+
+## DiD vs synthetic control: decision guide
+
+::: {#tbl-sc-vs-did}
+
+| | DiD | Synthetic control |
+|---|---|---|
+| Treated units | Many | One / few aggregates |
+| Comparison | Equal-weight (or regression) average of controls | Data-driven convex weights |
+| Key assumption | Parallel trends with the average control | Treated unit lies in the convex hull of donors; donor combination keeps tracking it |
+| Needs | A control group with similar trends | Long pre-period; donors not hit by the treatment or spillovers |
+| Inference | Clustered SEs | Placebo permutations / conformal |
+| Fails when | Trends diverge | Treated unit is extreme (outside donor hull) — weights can't reach it |
+
+Difference-in-differences versus synthetic control.
+
+:::
+
+::: {.callout-tip title="Workflow"}
+(1) plot pre-trends; (2) fit both; (3) compare *backtest* error; (4) if they agree, report both — agreement is reassuring; if they disagree, the backtest tells you which counterfactual to trust; (5) placebo inference + leave-one-out.
+:::
+
+::: {.callout-note title="Hybrids that bridge the two"}
+*Synthetic DiD* (Arkhangelsky et al., 2021) adds unit + time weights to DiD; *Augmented SC* (Ben-Michael et al., 2021) bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: `pysyncon` (SC, augmented SC, placebo tests), `SparseSC`, `synthdid` ports; Google's `CausalImpact` / `tfcausalimpact` is a Bayesian structural-time-series cousin.
+:::
+
+::: {.callout-warning title="Practical gotchas"}
+exclude donors that could receive spillovers (neighbouring markets) or had their own interventions; match on outcome levels *and* key predictors when the pre-period is short; standardize if outcomes have very different scales across donors.
+:::

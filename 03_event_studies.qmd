@@ -1,0 +1,162 @@
+# Event Studies {#sec-event-studies}
+
+::: {.callout-tip title="Walkthrough summary"}
+This chapter covers two designs.
+
+**Part A, financial event study.** Fit a market model on an estimation window before the event, then measure abnormal returns in the event window as realized minus predicted. Aggregate them into average and cumulative abnormal returns (CAR). A pre-event placebo window should show nothing. A significant value there points to leakage or a mis-dated event.
+
+**Part B, staggered rollout.** Units adopt at different times. Naive two-way fixed effects is biased when effects differ across cohorts or grow over time. Already-treated units end up serving as controls for later adopters, and those controls are still moving because of treatment.
+
+The fix is Callaway and Sant'Anna. It estimates each cohort-by-period effect with a clean 2×2 comparison, then aggregates by event time. Static and dynamic TWFE both miss the truth, while the clean comparisons track it. Not-yet-treated units are often a good practical control group.
+:::
+
+
+"Event study" names two closely related designs:
+
+- **Part A — Financial event study.** Measure *abnormal* stock returns around an announcement (earnings, M&A, product launch) relative to a market benchmark. The counterfactual is "what the stock would have returned given the market's move".
+- **Part B — Panel event study with staggered rollout.** Measure how a KPI evolves before/after a feature, policy or launch that reaches different units (markets, stores, user cohorts) at different times. This generalises DiD (@sec-did) and has a well-known pitfall: naive two-way fixed effects is biased when effects differ across cohorts or grow over time.
+
+Both share the same idea: align every unit on **event time** (time relative to its own event), and estimate effects per event-time period.
+
+{{< include _setup.qmd >}}
+
+## Part A · Abnormal returns with the market model
+
+For each firm $i$ with event day $d_i$:
+
+1. **Estimation window** (here days −250 to −30): fit $r_{it} = \alpha_i + \beta_i r_{mt} + \varepsilon_{it}$. The gap before the event keeps leakage/run-up out of the benchmark.
+2. **Event window** (−5 to +10): abnormal return $AR_{it} = r_{it} - (\hat\alpha_i + \hat\beta_i r_{mt})$.
+3. Aggregate: average AR by event day (AAR), cumulative AR (CAR), and cross-sectional tests.
+
+::: {.callout-note title="Simulated truth"}
++2% on day 0 and +0.2%/day drift for 5 days, so **true CAR[0,+5] = 3.0%**.
+:::
+
+```{python}
+#| label: tbl-event-aar
+#| tbl-cap: "Average abnormal return (AAR) and its cumulative version (CAAR) by event day, first eight days."
+from causalkit import simulate, events
+
+returns, market, event_day = simulate.stock_returns(n_firms=60, event_jump=0.02, drift=0.002, drift_days=5, seed=3)
+ar = events.market_model_abnormal_returns(returns, market, event_day,
+                                          estimation_window=(-250, -30), event_window=(-5, 10))
+agg = events.aggregate_abnormal_returns(ar)
+agg.head(8)
+```
+
+```{python}
+#| label: fig-event-aar
+#| fig-cap: "Average abnormal return by event day (left) and cumulative average abnormal return (right), with 95% intervals."
+#| fig-alt: "Left: bar chart of average abnormal return by event day, with a jump of about 2 percent on day 0. Right: line chart of cumulative return rising after day 0 with a shaded confidence band."
+fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+axes[0].bar(agg.index, agg.aar * 100, yerr=1.96 * agg.aar_se * 100, capsize=2, color="C0")
+axes[0].set(title="Average abnormal return (AAR) by event day", xlabel="days relative to event", ylabel="%")
+axes[1].plot(agg.index, agg.caar * 100, "o-")
+axes[1].fill_between(agg.index, (agg.caar - 1.96 * agg.caar_se) * 100, (agg.caar + 1.96 * agg.caar_se) * 100, alpha=0.2)
+axes[1].set(title="Cumulative average abnormal return (CAAR)", xlabel="days relative to event", ylabel="%")
+for ax in axes:
+    ax.axvline(-0.5, ls="--", c="grey"); ax.axhline(0, c="k", lw=0.8)
+plt.show()
+```
+
+Report CARs over a few pre-specified windows. The pre-event window [−5,−1] is a placebo: a significant value there suggests leakage or a mis-dated event.
+
+```{python}
+#| label: tbl-event-car
+#| tbl-cap: "Cumulative abnormal return (CAR) tests over pre-specified windows. The pre-event window [-5, -1] is a placebo."
+from scipy import stats
+
+def car_test(start, end):
+    c = events.car(ar, start, end)
+    t = c.mean() / c.sem()
+    return {"window": f"[{start:+d}, {end:+d}]", "mean_CAR_%": 100 * c.mean(), "t": t,
+            "p": 2 * stats.t.sf(abs(t), len(c) - 1), "share_positive": (c > 0).mean()}
+
+pd.DataFrame([car_test(-5, -1), car_test(0, 0), car_test(0, 5), car_test(0, 10)])
+```
+
+::: {.callout-tip title="Practical notes: financial event studies"}
+- **Benchmarks:** market model is the workhorse; Fama–French 3/5-factor or industry benchmarks matter for long windows or small caps.
+- **Event-date clustering:** if many firms share the same event date (e.g. a regulation), their ARs are cross-correlated and the cross-sectional t-test overstates precision — use portfolio/calendar-time approaches.
+- **Event-induced variance:** volatility often spikes on event days; the cross-sectional test used here is robust to that, as is the Boehmer–Musumeci–Poulsen (BMP) standardized test.
+- **Confounding events:** screen out firms with other news (earnings + M&A on the same day) in the window.
+- **Long horizons:** CARs compound benchmark misspecification; prefer buy-and-hold abnormal returns with matched benchmarks or calendar-time portfolios.
+:::
+
+## Part B · Staggered rollout of a feature across markets
+
+Units adopt in three cohorts (periods 6, 11, 16) plus a never-treated group. The effect differs by cohort (earlier adopters benefit more) and **grows by 0.3 per period** after adoption.
+
+Why TWFE breaks: with staggered timing, TWFE implicitly uses *already-treated* units as controls for later adopters. When effects grow over time, those "controls" are still changing because of treatment, contaminating the comparison (Goodman-Bacon, 2021; de Chaisemartin & D'Haultfœuille, 2020; Sun & Abraham, 2021).
+
+The fix used here is **Callaway & Sant'Anna (2021)**: estimate each cohort-by-period effect $ATT(g,t)$ with a clean 2×2 comparison (cohort $g$ vs never-treated, relative to period $g-1$), then aggregate by event time.
+
+```{python}
+#| label: fig-staggered-cohorts
+#| fig-cap: "Mean KPI by adoption cohort. Dotted vertical lines mark each cohort's adoption period."
+#| fig-alt: "Line chart of mean KPI by period for a never-treated group and three adoption cohorts, which diverge upward after their adoption periods."
+from causalkit import did
+from causalkit.utils import cluster_bootstrap
+
+panel = simulate.staggered_panel(n_units=120, n_periods=24, cohorts=(6, 11, 16), growth=0.3, seed=5)
+truth_by_e = panel[panel.D == 1].groupby("rel_time")["true_te"].mean()
+true_overall = panel.loc[panel.D == 1, "true_te"].mean()
+
+fig, ax = plt.subplots()
+for g, d in panel.groupby("cohort"):
+    m = d.groupby("period")["y"].mean()
+    ax.plot(m.index, m, label="never treated" if g == 0 else f"cohort {g}")
+    if g:
+        ax.axvline(g - 0.5, ls=":", c=ax.lines[-1].get_color())
+ax.set(title="KPI by adoption cohort", xlabel="period", ylabel="mean KPI"); ax.legend(); plt.show()
+```
+
+```{python}
+#| label: tbl-staggered-overall
+#| tbl-cap: "Static TWFE versus Callaway–Sant'Anna overall ATT, with the true average effect."
+# Static TWFE vs Callaway-Sant'Anna overall ATT
+twfe = did.twfe_did(panel, "y", "unit", "period", "D")
+gt = did.group_time_att(panel, "y", "unit", "period", "cohort")
+cs_overall = did.aggregate_overall(gt)
+
+boot = cluster_bootstrap(
+    panel, "unit",
+    lambda d: pd.concat([did.aggregate_event_time(did.group_time_att(d, "y", "unit", "period", "cohort")),
+                         pd.Series({"overall": did.aggregate_overall(did.group_time_att(d, "y", "unit", "period", "cohort"))})]),
+    n_boot=150, seed=0)
+
+pd.DataFrame({
+    "estimate": [twfe.params["D"], cs_overall],
+    "se": [twfe.bse["D"], boot["overall"].std()],
+    "truth (avg effect over treated cells)": [true_overall] * 2,
+}, index=["static TWFE", "Callaway-Sant'Anna"])
+```
+
+```{python}
+#| label: fig-staggered-event-study
+#| fig-cap: "Event-study estimates from dynamic TWFE and Callaway–Sant'Anna against the true effect by event time."
+#| fig-alt: "Plot of effect against periods relative to adoption. A black truth line rises with event time; Callaway–Sant'Anna points track it closely while dynamic TWFE points deviate at the window endpoints."
+es_tab, _ = did.event_study(panel, "y", "unit", "period", "rel_time", window=(-5, 7))
+cs_e = did.aggregate_event_time(gt).loc[-5:7]
+cs_se = boot[[c for c in boot.columns if c != "overall"]].std().loc[-5:7]
+
+fig, ax = plt.subplots(figsize=(10, 4.5))
+ax.plot(truth_by_e.loc[:7].index, truth_by_e.loc[:7], "k-", lw=2, label="truth")
+ax.errorbar(es_tab.rel_time - 0.12, es_tab.coef, yerr=1.96 * es_tab.se, fmt="s", capsize=2, label="dynamic TWFE")
+ax.errorbar(cs_e.index + 0.12, cs_e, yerr=1.96 * cs_se, fmt="o", capsize=2, label="Callaway-Sant'Anna")
+ax.axhline(0, c="k", lw=0.8); ax.axvline(-0.5, ls="--", c="grey")
+ax.set(title="Event-study estimates vs truth", xlabel="periods relative to adoption", ylabel="effect on KPI")
+ax.legend(); plt.show()
+```
+
+In @fig-staggered-event-study and @tbl-staggered-overall, static TWFE understates the average effect: later periods for early adopters get absorbed as "control" variation. The dynamic TWFE event study does better in the middle of the window (a large never-treated group helps), but look at the binned endpoints (−5 and +7): they pool many heterogeneous periods and come out biased, and the spurious −5 lead could be misread as a pre-trend. More generally, Sun & Abraham show TWFE lead/lag coefficients mix in effects from other periods whenever effects are heterogeneous across cohorts. Callaway–Sant'Anna tracks the truth because every comparison is a clean 2×2.
+
+Pre-period CS estimates (negative event times) are placebo tests of parallel trends for each cohort.
+
+::: {.callout-tip title="Practical notes: rollout event studies"}
+- Prefer **heterogeneity-robust estimators**: Callaway–Sant'Anna, Sun–Abraham (interaction-weighted), Borusyak–Jaravel–Spiess imputation, or stacked DiD.
+- Use **not-yet-treated** units as controls when there is no never-treated group (and sometimes even when there is — they're often more comparable).
+- Rollout order is rarely random: if markets with the best expected gains go first, cohorts differ systematically. Check pre-trends **by cohort**.
+- Event-time estimates far from zero are identified from fewer cohorts — show cohort composition or trim the window.
+- Libraries: `csdid` (Python port of R `did`), `differences`, `pyfixest` (`did2s`, saturated event studies), `linearmodels`.
+:::

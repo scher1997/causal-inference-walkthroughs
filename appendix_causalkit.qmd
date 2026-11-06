@@ -1,0 +1,45 @@
+# The `causalkit` package {#sec-causalkit}
+
+The estimators used in every chapter live in `src/causalkit/`, a small package with truth-recovery tests: each estimator must recover the effect planted in its simulated data.
+
+## Setup
+
+```bash
+uv sync --extra dev --extra render   # create .venv and install causalkit in editable mode
+uv run pytest -q                     # estimators must recover the planted effects
+uv run quarto render                 # build the book
+```
+
+The chapters also work without installing the package: `_setup.qmd` falls back to `./src` on the path.
+
+## Layout
+
+```text
+src/causalkit/
+  ols.py          OLS/WLS with HC1 and cluster-robust (CR1) SEs, Wald tests
+  did.py          2x2, TWFE, event study, Callaway–Sant'Anna ATT(g,t)
+  synth.py        synthetic control, DiD counterfactual, placebos, backtests
+  events.py       market-model abnormal returns, CAR aggregation
+  rdd.py          local polynomial RD, binned means, density test
+  propensity.py   propensity fit, SMD balance, IPW, AIPW, cross-fit AIPW, matching
+  experiments.py  matched pairs, TBR, randomization inference, switchback design/analysis
+  simulate.py     data-generating processes with known ground truth
+  utils.py        cluster bootstrap
+tests/            truth-recovery tests for every estimator
+```
+
+## Source of truth
+
+The chapters in this book replace the original Jupyter notebooks, which were generated from cell specs. The `.qmd` files are now the source: edit a chapter, re-render, and results update. Chapter results are cached in `_freeze/`; delete a chapter's folder there (or the whole directory) to force a re-run.
+
+## Production libraries
+
+| Need | Libraries |
+|---|---|
+| RD inference | `rdrobust`, `rddensity`, `rdlocrand` |
+| Staggered DiD, fixed effects | `pyfixest`, `csdid`, `differences`, `linearmodels` |
+| Synthetic control | `pysyncon`, `SparseSC`, `tfcausalimpact` |
+| Observational causal inference | `DoWhy`, `EconML`, `causalml`, `zEpid` |
+| Geo experiments | `GeoLift`, `matched_markets`, `GeoexperimentsResearch` |
+
+: Mature libraries to cross-check against. {#tbl-production}

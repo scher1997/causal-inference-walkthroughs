@@ -1,0 +1,174 @@
+# Difference-in-Differences (DiD) {#sec-did}
+
+::: {.callout-tip title="Walkthrough summary"}
+DiD estimates the ATT by comparing the change in the treated group with the change in an untreated group. It holds only under parallel trends: without treatment, both groups would have moved together. Level differences are fine. Trend differences are not.
+
+- Parallel trends cannot be tested after treatment, so check the pre-period. Plot raw group means first.
+- An event study gives one coefficient per period relative to treatment. Leads should sit near zero, and a joint F-test on them summarizes the check.
+- Placebo treatment dates should show nothing. Cluster standard errors at the level of assignment, usually the unit.
+
+In the demo, parallel trends recovers the true effect of 2.0. With a violated pre-trend, the leads slope upward, the F-test rejects, and the post-period estimate is inflated by the continuing drift.
+
+Passing a pre-trend test is not proof. Pre-tests have low power, and conditioning on passing them distorts inference. Sensitivity bounds such as HonestDiD are the more honest check.
+:::
+
+
+**Question:** what did an intervention do to the treated group, relative to what would have happened without it?
+
+DiD estimates the **ATT** by comparing the *change* in the treated group to the *change* in an untreated comparison group:
+
+$$\widehat{ATT} = (\bar Y_{T,post} - \bar Y_{T,pre}) - (\bar Y_{C,post} - \bar Y_{C,pre})$$
+
+::: {.callout-important title="Identifying assumption: parallel trends"}
+absent treatment, both groups would have moved in parallel. Level differences are fine; *trend* differences are not. It is untestable for the post-period, so we lean on the pre-period: if the groups tracked each other before the intervention, that is evidence (not proof) they would have kept doing so.
+:::
+
+::: {.callout-note title="Workflow"}
+1. Plot raw group means — the pre-trend plot is the first and most important diagnostic.
+2. Estimate the 2×2 DiD and the two-way fixed-effects (TWFE) version.
+3. Fit an event study (leads & lags) and jointly test the pre-period leads.
+4. Run a placebo (fake treatment date).
+5. See what happens when parallel trends is violated.
+:::
+
+::: {.callout-note title="Simulated truth"}
+We use simulated data with a **known true effect of 2.0**, so we can see when the estimator is right and when it isn't.
+:::
+
+{{< include _setup.qmd >}}
+
+```{python}
+from causalkit import simulate, did
+
+TREAT_PERIOD, TRUE_EFFECT = 12, 2.0
+good = simulate.did_panel(effect=TRUE_EFFECT, treat_period=TREAT_PERIOD, pretrend=0.0, seed=42)
+bad = simulate.did_panel(effect=TRUE_EFFECT, treat_period=TREAT_PERIOD, pretrend=0.25, seed=42)
+
+good.head()
+```
+
+## Pre-trend plot
+
+Plot the average outcome per group per period. Under parallel trends the lines are vertically offset but move together before the dashed line. In the right panel of @fig-did-pretrends, the treated group is drifting away *before* treatment — any DiD estimate there will absorb that drift.
+
+```{python}
+#| label: fig-did-pretrends
+#| fig-cap: "Raw group means when parallel trends hold (left) and when the treated group has a pre-trend (right). The dashed line marks the start of treatment."
+#| fig-alt: "Two line charts of mean outcome by period for treated and control groups. On the left the lines move together before treatment; on the right the treated line drifts upward before treatment."
+def plot_group_means(df, ax, title):
+    means = df.groupby(["period", "treated"])["y"].mean().unstack()
+    ax.plot(means.index, means[1], "o-", label="treated")
+    ax.plot(means.index, means[0], "s-", label="control")
+    ax.axvline(TREAT_PERIOD - 0.5, ls="--", c="grey")
+    ax.set(title=title, xlabel="period", ylabel="mean outcome")
+    ax.legend()
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
+plot_group_means(good, axes[0], "Parallel trends hold")
+plot_group_means(bad, axes[1], "Parallel trends violated (treated pre-trend)")
+plt.show()
+```
+
+## 2×2 DiD and TWFE
+
+The canonical regression is `y ~ treated + post + treated:post`. The interaction is the DiD estimate.
+TWFE replaces the group and period dummies with **unit and period fixed effects** — identical in a balanced block-adoption design, but it also absorbs unit-level heterogeneity and lets you add time-varying covariates.
+
+::: {.callout-important title="Cluster your standard errors"}
+**Always cluster standard errors at the unit level** (the level at which treatment is assigned): outcomes within a unit are serially correlated, and ignoring that makes CIs far too narrow (Bertrand, Duflo & Mullainathan, 2004).
+:::
+
+```{python}
+#| label: tbl-did-estimates
+#| tbl-cap: "2×2 DiD and TWFE estimates against the true effect of 2.0."
+r_2x2 = did.did_2x2(good, "y", "treated", "post", cluster="unit")
+r_twfe = did.twfe_did(good, "y", "unit", "period", "D")
+
+pd.concat([
+    r_2x2.summary(["treated:post"]).rename(index={"treated:post": "2x2 DiD"}),
+    r_twfe.summary(["D"]).rename(index={"D": "TWFE"}),
+]).assign(truth=TRUE_EFFECT)
+```
+
+## Event study: leads and lags
+
+Instead of one post dummy, estimate one coefficient per period relative to treatment (period −1 is the omitted reference):
+
+$$y_{it} = \alpha_i + \gamma_t + \sum_{k \neq -1} \beta_k \, \mathbb{1}[t - T_0 = k] \cdot \text{treated}_i + \varepsilon_{it}$$
+
+- **Leads** ($k<0$) should be ≈ 0. They are a direct visual + statistical check of pre-trends.
+- **Lags** ($k \ge 0$) trace out the dynamic effect: does it appear immediately, build up, or fade?
+
+The joint F-test on the leads summarises the pre-trend check in one number.
+
+```{python}
+#| label: fig-did-event-study
+#| fig-cap: "Event-study coefficients with 95% confidence intervals. Under parallel trends (left) the leads sit near zero and the lags near the true effect of 2.0; with a violated pre-trend (right) the leads slope upward."
+#| fig-alt: "Two coefficient plots against periods relative to treatment. On the left the pre-treatment coefficients are near zero and post-treatment ones cluster around 2. On the right the pre-treatment coefficients rise steadily."
+def add_rel_time(df):
+    return df.assign(rel_time=np.where(df.treated == 1, df.period - TREAT_PERIOD, np.nan))
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
+for ax, (name, df) in zip(axes, {"Parallel trends hold": good, "Violated": bad}.items()):
+    tab, res = did.event_study(add_rel_time(df), "y", "unit", "period", "rel_time", window=(-8, 7))
+    wald = res.wald_test(did.lead_names(tab))
+    ax.errorbar(tab.rel_time, tab.coef, yerr=1.96 * tab.se, fmt="o", capsize=3)
+    ax.axhline(0, c="k", lw=0.8); ax.axhline(TRUE_EFFECT, c="green", ls=":", label="true effect")
+    ax.axvline(-0.5, ls="--", c="grey")
+    ax.set(title=f"{name}\npre-trend F-test p = {wald['p']:.3f}", xlabel="periods relative to treatment")
+    ax.legend()
+axes[0].set_ylabel("coefficient (95% CI)")
+plt.show()
+```
+
+In @fig-did-event-study, on the left the leads hover around zero and the lags sit on the true effect. On the right the leads slope upward and the F-test rejects — exactly the warning you want *before* trusting the post-period coefficients, which are now inflated by the continuing trend.
+
+```{python}
+r_bad = did.twfe_did(bad, "y", "unit", "period", "D")
+print(f"TWFE estimate with violated parallel trends: {r_bad.params['D']:.2f} "
+      f"(95% CI {r_bad.conf_int().loc['D', 'lower']:.2f} to {r_bad.conf_int().loc['D', 'upper']:.2f}); truth = {TRUE_EFFECT}")
+```
+
+## Placebo test: fake treatment date
+
+Drop the real post-period, pretend treatment happened earlier, and re-estimate. A "significant effect" where none can exist means the design is picking up something other than the treatment.
+
+```{python}
+#| label: tbl-did-placebo
+#| tbl-cap: "Placebo-date estimates using pre-period data only. Any significant effect here is spurious."
+def placebo(df, fake_start):
+    pre = df[df.period < TREAT_PERIOD].assign(D=lambda d: d.treated * (d.period >= fake_start))
+    r = did.twfe_did(pre, "y", "unit", "period", "D")
+    return {"fake_start": fake_start, "estimate": r.params["D"], "p": r.pvalues["D"]}
+
+pd.DataFrame([placebo(good, s) | {"data": "parallel"} for s in (6, 8)]
+             + [placebo(bad, s) | {"data": "violated"} for s in (6, 8)])
+```
+
+## Practical checklist
+
+::: {#tbl-did-checklist}
+
+| Check | Why |
+|---|---|
+| Raw pre-trend plot | Catches most problems before any regression. |
+| Event-study leads ≈ 0 + joint F-test | Formalises the visual check. |
+| Placebo dates / placebo outcomes | Guards against coincident shocks. |
+| Cluster SEs at the treatment-assignment level | Serial correlation inflates false positives. With < ~30 clusters, use a wild cluster bootstrap. |
+| No anticipation | If units react before $T_0$ (announcements), move the reference period earlier. |
+| Stable composition | Units entering/leaving the panel because of treatment breaks the comparison. |
+
+Practical DiD checklist.
+
+:::
+
+::: {.callout-warning title="Caveats worth knowing"}
+- *Passing a pre-trend test is not proof.* Pre-tests have low power, and conditioning on passing them distorts inference (Roth, 2022). Report sensitivity bounds — e.g. `HonestDiD` (Rambachan & Roth, 2023): "how large a post-period trend deviation would overturn the result?"
+- *Staggered adoption* (units treated at different times) breaks TWFE when effects vary over time or across cohorts. See @sec-event-studies.
+- *Parallel trends is scale-dependent*: if it holds in levels it generally won't hold in logs. Choose the scale up front for substantive reasons.
+- *When no comparison group tracks the treated unit*, consider synthetic control (@sec-synth).
+:::
+
+::: {.callout-note title="Production tools"}
+`pyfixest` (fast high-dimensional FE, clustered/wild-bootstrap SEs, event studies), `linearmodels.PanelOLS`, `statsmodels` (`smf.ols(...).fit(cov_type="cluster", ...)`).
+:::

@@ -1,0 +1,219 @@
+# Geo Experiments and Switchback Testing {#sec-geo}
+
+::: {.callout-tip title="Walkthrough summary"}
+User-level A/B tests assume no interference between users. In a supply-constrained marketplace, a promo that lifts treated users' requests can displace control users' orders. The A/B test here reports a roughly 30% lift that does not exist at market level, since the platform only reshuffled who got served. Randomizing coarser units keeps spillovers inside the unit.
+
+- **Matched-pair geo test (Part B):** pair geos on pre-period volume and randomize within pairs. Analyze with time-based regression. Before launch, run A/A backtests on history to get the noise floor. The minimum detectable effect is roughly 2.5 times the placebo standard deviation, so the planned lift must clear it.
+- **Switchback (Part C):** randomize treatment over time blocks within one market. The catch is carryover, since the system takes hours to reach a new regime after a switch. Burn-in trims the transition. Block length is a trade-off: short blocks give more units but more carryover, and very long blocks become collinear with day fixed effects.
+:::
+
+
+User-level A/B tests assume **SUTVA**: one user's treatment doesn't affect another's outcome. That breaks in:
+
+- **Marketplaces / shared supply** (ride-hailing, delivery, ads auctions): treated users consume supply that control users would have used.
+- **Network or market-level media** (TV, out-of-home, regional pricing): you can't target individuals at all.
+
+Two standard fixes randomize at a coarser level so spillovers stay *inside* a unit of randomization:
+
+::: {#tbl-geo-vs-switchback}
+
+| | Geo experiment | Switchback |
+|---|---|---|
+| Randomize over | Regions (DMAs, cities) | Time blocks within a market (or region × time) |
+| Handles | Cross-user spillover inside a geo; untargetable media | Shared supply/pricing within a market |
+| Main risks | Few units → low power; spillover across geo borders | **Carryover** between consecutive blocks |
+| Analysis | Time-Based Regression, synthetic control, randomization inference | Regression with time FEs, burn-in trimming, randomization inference |
+
+Geo experiments versus switchbacks.
+
+:::
+
+**Part A** shows why user-level tests mislead under interference. **Part B** designs and analyses a matched-pair geo experiment. **Part C** runs a switchback with carryover.
+
+{{< include _setup.qmd >}}
+
+## Part A · Interference: a user-level A/B test in a supply-constrained marketplace
+
+Users request orders; there are only 3,000 couriers-worth of capacity per day. A promo lifts treated users' request rate from 20% to 26%. When demand exceeds supply, requests are filled at random — so treated users' extra orders **displace** control users' orders.
+
+```{python}
+rng = np.random.default_rng(0)
+N_USERS, CAPACITY, P_CTRL, P_TREAT, DAYS = 20_000, 3_000, 0.20, 0.26, 30
+
+def simulate_day(treat_mask):
+    wants = rng.random(N_USERS) < np.where(treat_mask, P_TREAT, P_CTRL)
+    requesters = np.flatnonzero(wants)
+    filled = np.zeros(N_USERS, bool)
+    filled[rng.choice(requesters, size=min(CAPACITY, len(requesters)), replace=False)] = True
+    return filled
+
+ab_lift, global_t, global_c = [], [], []
+for _ in range(DAYS):
+    half = rng.random(N_USERS) < 0.5
+    f = simulate_day(half)
+    ab_lift.append(f[half].mean() / f[~half].mean() - 1)
+    global_t.append(simulate_day(np.ones(N_USERS, bool)).sum())
+    global_c.append(simulate_day(np.zeros(N_USERS, bool)).sum())
+
+print(f"User-level A/B estimate of order lift:      {np.mean(ab_lift):+.1%}")
+print(f"True market-level effect (all-on vs all-off): {np.mean(global_t) / np.mean(global_c) - 1:+.1%}")
+```
+
+The A/B test reports a ~30% lift that **doesn't exist at market level**: the platform was supply-bound, so the promo only reshuffled who got served. Randomizing whole markets (Part B) or whole time periods (Part C) puts both "worlds" under the same capacity constraint and measures the real, global effect.
+
+## Part B · Matched-pair geo experiment
+
+**Design.** 40 geos with 90 days of pre-period history. Pair geos with similar pre-period volume, randomize one of each pair to treatment. Pairing on a strong predictor dramatically improves precision when you only have tens of units.
+
+**Analysis.** *Time-Based Regression* (TBR; Kerman, Wang & Vaver 2017): regress aggregate treatment-group sales on aggregate control-group sales during the pre-period, forecast the post-period counterfactual, and sum the difference. Complemented by randomization inference over the actual pair design.
+
+```{python}
+#| label: tbl-geo-pairs
+#| tbl-cap: "First six rows of the matched-pair assignment."
+from causalkit import simulate, experiments
+
+TEST_START, TEST_END, TRUE_LIFT = 90, 120, 0.05
+base = simulate.geo_markets(n_geos=40, n_days=TEST_END, seed=3)
+pre_volume = base[base.day < TEST_START].groupby("geo")["sales"].sum()
+pairs = experiments.matched_pairs(pre_volume, seed=3)
+treated_geos = set(pairs.loc[pairs.treated == 1, "geo"])
+pairs.head(6)
+```
+
+### Power check *before* launch: A/A backtests on history
+
+Run the full analysis many times on pre-period data only, with fresh random pair assignments and a fake test window where the true effect is zero. The spread of these placebo estimates is the noise floor; the minimum detectable effect (80% power, α = 0.10 two-sided) is roughly 2.5 × that SD.
+
+```{python}
+hist = base[base.day < TEST_START]
+aa = []
+for s in range(200):
+    p = experiments.matched_pairs(pre_volume, seed=1000 + s)
+    _, summ = experiments.tbr(hist, set(p.loc[p.treated == 1, "geo"]), test_start=TEST_START - 30)
+    aa.append(summ["relative_lift"])
+aa = np.array(aa)
+print(f"A/A relative-lift SD: {aa.std():.2%}  ->  approx. MDE (80% power, alpha=0.10): {2.5 * aa.std():.2%}")
+print(f"A/A false-positive check: mean placebo lift {aa.mean():+.2%}")
+```
+
+The planned 5% lift is above the MDE, so a 30-day test with 40 geos is adequately powered. (If it weren't: add geos, lengthen the test, or improve the pairing — not hope.) Now apply the treatment and analyse.
+
+```{python}
+#| label: fig-geo-tbr
+#| fig-cap: "Time-based regression: actual versus counterfactual for the treatment group (left) and cumulative incremental sales with a 90% interval (right)."
+#| fig-alt: "Left: treatment-group sales with a dashed counterfactual that separates upward after the test start. Right: cumulative incremental sales rising with a widening shaded interval."
+df = simulate.apply_geo_lift(base, treated_geos, TEST_START, TRUE_LIFT)
+daily, summary = experiments.tbr(df, treated_geos, TEST_START, alpha=0.10)
+
+agg = df.assign(group=np.where(df.geo.isin(treated_geos), "treatment", "control")) \
+        .pivot_table(index="day", columns="group", values="sales", aggfunc="sum")
+fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+axes[0].plot(agg.index, agg.treatment, label="treatment (actual)")
+axes[0].plot(daily.index, daily.counterfactual, "--", label="TBR counterfactual")
+axes[0].axvline(TEST_START - 0.5, c="grey", ls="--"); axes[0].set(title="Treatment group: actual vs counterfactual", xlabel="day"); axes[0].legend()
+axes[1].plot(daily.index, daily.cum_incremental, label="cumulative incremental sales")
+axes[1].fill_between(daily.index, daily.cum_lower, daily.cum_upper, alpha=0.2, label="90% interval")
+axes[1].axhline(0, c="k", lw=0.8); axes[1].set(title="Cumulative effect", xlabel="day"); axes[1].legend()
+plt.show()
+{k: round(v, 4) for k, v in summary.items()} | {"true_relative_lift": TRUE_LIFT}
+```
+
+```{python}
+#| label: fig-geo-ri
+#| fig-cap: "Randomization inference: the observed log-ratio DiD against its distribution under re-randomization within pairs."
+#| fig-alt: "Histogram of the null distribution centred near zero with a red vertical line for the observed statistic far to the right."
+stat = experiments.log_ratio_did(df, TEST_START)
+ri = experiments.pair_randomization_test(pairs, stat, n_perm=2000, seed=0)
+
+fig, ax = plt.subplots()
+ax.hist(ri["null"], bins=50, color="grey", alpha=0.7, label="re-randomized within pairs")
+ax.axvline(ri["observed"], c="C3", lw=2, label=f"observed (p = {ri['p']:.4f})")
+ax.set(title="Randomization inference: log-ratio DiD", xlabel="statistic"); ax.legend(); plt.show()
+print(f"observed log-ratio DiD {ri['observed']:.4f}  ~= lift {np.expm1(ri['observed']):.2%}")
+```
+
+::: {.callout-tip title="Geo-experiment practicalities"}
+- **Spillover across borders:** commuters and media markets leak. Use DMA-level geos, add buffer zones, or exclude border geos.
+- **Heterogeneous geo sizes:** one huge market can dominate; pair or stratify on size and consider dropping outliers from randomization (keep them as always-control).
+- **Pre-period fit:** TBR assumes the treatment–control relationship is stable; inspect the pre-period R² and residuals. Synthetic control (@sec-synth) is the alternative when you can choose a few treated geos deliberately.
+- **Cool-down:** effects of media often persist; extend measurement past the test end to capture them.
+- **Tools:** Google's `GeoexperimentsResearch` (TBR / GBR), `matched_markets` (Trimmed Match), Meta's `GeoLift` (augmented SC with power analysis), `tfcausalimpact`.
+:::
+
+## Part C · Switchback test with carryover
+
+Randomize **treatment by time block** in one market (e.g. a new dispatch algorithm on/off in 4-hour blocks for 8 weeks). Everyone in the market is in the same regime at the same time, so interference between users is contained.
+
+The catch is **carryover**: supply repositions slowly, so the system takes a few hours to reach the new regime after each switch. Measured right after a switch, outcomes reflect partly the *previous* regime, biasing the estimate toward zero.
+
+::: {.callout-note title="Simulated truth"}
+the steady-state (always-on vs always-off) effect is **+8** on an hourly metric; exposure adjusts with persistence 0.6 per hour.
+:::
+
+```{python}
+#| label: fig-sb-carryover
+#| fig-cap: "Carryover in a switchback: the effective treatment lags behind the assignment."
+#| fig-alt: "Step line for assignment and a smoother red line for effective treatment that lags each switch over three days of hourly data."
+TRUE_SB_EFFECT, HOURS = 8.0, 24 * 56
+
+def run_switchback(block_len, seed):
+    a = experiments.switchback_assignment(HOURS, block_len, seed=seed)
+    d = simulate.switchback_marketplace(a.assignment.to_numpy(), effect=TRUE_SB_EFFECT, persistence=0.6, seed=seed)
+    return pd.concat([d, a[["block", "since_switch"]]], axis=1)
+
+sb = run_switchback(block_len=4, seed=1)
+fig, ax = plt.subplots(figsize=(11, 3.5))
+w = sb[sb.t < 24 * 3]
+ax.step(w.t, w.treated * TRUE_SB_EFFECT, where="post", c="grey", label="assignment (scaled)")
+ax.plot(w.t, w.exposure * TRUE_SB_EFFECT, c="C3", label="effective treatment (with carryover)")
+ax.set(title="Carryover: the system lags behind the assignment", xlabel="hour"); ax.legend(); plt.show()
+```
+
+```{python}
+#| label: tbl-sb-burnin
+#| tbl-cap: "Switchback estimates by burn-in length, against the true effect of 8."
+rows = []
+for b in range(0, 4):
+    r = experiments.analyze_switchback(sb, burn_in=b)
+    rows.append({"burn_in_hours": b, "estimate": r["estimate"], "se": r["se"],
+                 "ci_lower": r["ci"][0], "ci_upper": r["ci"][1], "hours_used": r["n_used"]})
+pd.DataFrame(rows).set_index("burn_in_hours").assign(truth=TRUE_SB_EFFECT)
+```
+
+Dropping the first hours after each switch removes most of the carryover bias, at the cost of discarding data (wider CIs).
+
+### Choosing the block length
+
+Short blocks give many randomization units (more precision against time-varying noise) but more switches (more carryover and more data burned). Long blocks have little carryover but few effective units — and blocks as long as a day become collinear with day fixed effects, leaving almost nothing to identify the effect. Simulate the trade-off with your own carryover estimate before launching:
+
+```{python}
+#| label: fig-sb-blocklen
+#| fig-cap: "Switchback design: RMSE of the effect estimate by block length, with and without burn-in."
+#| fig-alt: "Line chart of RMSE against block length on a log axis with one line for no burn-in and one for two hours of burn-in."
+rows = []
+for block_len in (1, 2, 4, 6, 8, 12):
+    for burn in (0, 2):
+        if burn >= block_len:
+            continue
+        ests = [experiments.analyze_switchback(run_switchback(block_len, s), burn_in=burn)["estimate"] for s in range(40)]
+        rows.append({"block_len_h": block_len, "burn_in_h": burn, "bias": np.mean(ests) - TRUE_SB_EFFECT,
+                     "sd": np.std(ests, ddof=1), "rmse": np.sqrt(np.mean((np.array(ests) - TRUE_SB_EFFECT) ** 2))})
+grid = pd.DataFrame(rows)
+
+fig, ax = plt.subplots()
+for burn, d in grid.groupby("burn_in_h"):
+    ax.plot(d.block_len_h, d.rmse, "o-", label=f"burn-in {burn}h")
+ax.set(xscale="log", xticks=[1, 2, 4, 6, 8, 12], xticklabels=[1, 2, 4, 6, 8, 12],
+       title="Switchback design: RMSE vs block length (40 simulated tests each)",
+       xlabel="block length (hours)", ylabel="RMSE of effect estimate"); ax.legend(); plt.show()
+grid
+```
+
+::: {.callout-tip title="Switchback practicalities"}
+- **Estimate carryover first** (e.g. from an earlier test or system dynamics) and set burn-in ≥ the time to reach a new steady state.
+- **Balance time-of-day/day-of-week:** include hour and day fixed effects; consider *stratified* or regular switching schedules so each hour-of-day gets both arms.
+- **Cluster by block** (the unit of randomization) or use randomization inference — consecutive hours are strongly correlated.
+- **Region × time switchbacks** across several markets add units and let you include market fixed effects.
+- **Novelty/learning effects** from users or drivers adapting to frequent switches can't be fixed by burn-in; check whether the effect drifts over the test.
+- References: Bojinov, Simchi-Levi & Zhao (2023) on optimal switchback designs; DoorDash and Lyft engineering blogs on switchback practice.
+:::

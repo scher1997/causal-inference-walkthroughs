@@ -1,0 +1,55 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "Causal Inference by Simulation"
+  subtitle: "Six worked examples where the true effect is known"
+  date: today
+  chapters:
+    - index.qmd
+    - part: "Panel and time-series designs"
+      chapters:
+        - 01_difference_in_differences.qmd
+        - 02_synthetic_control.qmd
+        - 03_event_studies.qmd
+    - part: "Identification from cutoffs and covariates"
+      chapters:
+        - 04_regression_discontinuity.qmd
+        - 05_propensity_scores.qmd
+    - part: "Designing experiments under interference"
+      chapters:
+        - 06_geo_experiments_and_switchbacks.qmd
+  appendices:
+    - appendix_causalkit.qmd
+
+# ---------------------------------------------------------------------------
+# OUTPUT FORMAT: edit this block to change what `quarto render` produces.
+# Keep one or more formats active; the rest can stay commented out.
+#   uv run quarto render                  # every active format
+#   uv run quarto render --to docx        # one format, regardless of this block
+# ---------------------------------------------------------------------------
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    fig-dpi: 150
+    df-print: default
+  # pdf:                      # PDF via LaTeX (needs TinyTeX: quarto install tinytex)
+  #   documentclass: scrbook
+  #   code-fold: false
+  # docx: default             # Word (test-rendered OK)
+  # epub: default             # e-book
+
+# Python cells run through Jupyter. `uv run` puts the project venv on PATH.
+jupyter: python3
+
+execute:
+  echo: true
+  warning: false
+  # Reuse cached results unless a chapter's source changes, so switching the
+  # format above does not re-run every simulation. Delete _freeze/ to force a re-run.
+  freeze: auto

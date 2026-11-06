@@ -1,0 +1,190 @@
+# Propensity-Score Methods {#sec-propensity}
+
+::: {.callout-tip title="Walkthrough summary"}
+With observational data, enrollees differ from non-enrollees, so the naive comparison mixes the program's effect with selection. Under unconfoundedness, adjusting for observed covariates through the propensity score, e(x) = P(T=1 | X), removes that bias.
+
+- Unconfoundedness cannot be tested. It rests on domain knowledge and a causal graph.
+- Overlap can be checked. Look at it first, since IPW weights explode where one group has almost no counterparts.
+- Judge the propensity model by balance, not prediction accuracy. Standardized mean differences under about 0.1 is the usual rule of thumb, shown in a love plot.
+
+The chapter compares regression adjustment, IPW, matching, and AIPW. AIPW is doubly robust: it is consistent if either the outcome model or the propensity model is right. Cross-fitting AIPW with flexible ML models gives the double/debiased ML recipe.
+
+The treated units have larger effects here, so the ATT exceeds the ATE. Choose the estimand from the business question. Sensitivity tools such as E-values or sensemakr ask how strong a hidden confounder would need to be to explain the result away.
+:::
+
+
+**Setting:** observational data — nobody randomized treatment. Example: customers who *chose* to enroll in a loyalty program; we want the program's effect on spend. Enrollees differ systematically (more engaged, higher income), so a naive comparison mixes the program effect with selection.
+
+**Propensity score:** $e(x) = P(T=1 \mid X=x)$. Rosenbaum & Rubin (1983): if treatment is as-good-as-random given $X$, it is also as-good-as-random given the scalar $e(X)$. So we can balance many confounders through one number.
+
+::: {.callout-important title="Assumptions"}
+1. **Unconfoundedness:** all common causes of treatment and outcome are in $X$. *Untestable* — it rests on domain knowledge.
+2. **Overlap (positivity):** $0 < e(x) < 1$ — every type of unit could have been treated or not. *Checkable.*
+3. No interference, and $X$ measured *before* treatment (never condition on post-treatment variables).
+:::
+
+::: {.callout-note title="Estimators compared"}
+(simulated data; true **ATE = 1.0**, true ATT > 1 because effects are larger for high-$x_1$ units, who are also more likely to be treated):
+naive difference · regression adjustment · IPW (ATE, ATT) · propensity matching (ATT) · AIPW (doubly robust) · cross-fitted AIPW with ML nuisance models.
+:::
+
+{{< include _setup.qmd >}}
+
+```{python}
+from causalkit import simulate, propensity as ps_lib
+
+df = simulate.observational(n=5000, seed=21)
+COVARIATES = ["x1", "x2", "x3", "x4"]
+X = df[COVARIATES].assign(x3_sq=df.x3 ** 2)   # analyst's feature set (includes the true nonlinearity)
+y, t = df.y, df.treated
+TRUE_ATE, TRUE_ATT = 1.0, df.loc[t == 1, "true_cate"].mean()
+
+naive = y[t == 1].mean() - y[t == 0].mean()
+print(f"treated share {t.mean():.2f} | naive difference {naive:.3f} | true ATE {TRUE_ATE:.3f} | true ATT {TRUE_ATT:.3f}")
+```
+
+## Estimate the propensity score and check overlap
+
+Overlap is the first thing to look at. Regions where one group has (almost) no counterparts are where every estimator extrapolates — IPW weights explode there. Common remedies: trim to a region of common support (e.g. 0.05 < e < 0.95, Crump et al., 2009), or switch the estimand (ATT, or overlap weights).
+
+```{python}
+#| label: fig-ps-overlap
+#| fig-cap: "Estimated propensity score distributions for treated and control units."
+#| fig-alt: "Overlapping histograms of estimated propensity scores for treated and control units; treated units sit further right, with limited overlap at the extremes."
+ps = ps_lib.fit_propensity(X, t)
+
+fig, ax = plt.subplots()
+bins = np.linspace(0, 1, 41)
+ax.hist(ps[t == 1], bins=bins, alpha=0.6, density=True, label="treated")
+ax.hist(ps[t == 0], bins=bins, alpha=0.6, density=True, label="control")
+ax.set(title="Propensity score overlap", xlabel="estimated P(treated | X)", ylabel="density"); ax.legend()
+plt.show()
+print(f"share with e(x) outside [0.05, 0.95]: {np.mean((ps < 0.05) | (ps > 0.95)):.1%}")
+```
+
+## Balance diagnostics (love plot)
+
+The goal of a propensity model is **balance**, not prediction accuracy — judge it by standardized mean differences (SMD) after weighting/matching, not by AUC. |SMD| < 0.1 is the usual rule of thumb. Check the covariates *and* relevant transformations (squares, interactions).
+
+```{python}
+#| label: fig-ps-love
+#| fig-cap: "Love plot: absolute standardized mean differences before and after IPW. The dashed line marks 0.1."
+#| fig-alt: "Dot plot of absolute standardized mean differences for each covariate, unweighted and under two IPW schemes. Unweighted values exceed 0.1 while weighted values fall below it."
+w_ate = ps_lib.ipw_weights(t, ps, "ATE")
+w_att = ps_lib.ipw_weights(t, ps, "ATT")
+balance = pd.DataFrame({
+    "unweighted": ps_lib.standardized_mean_diff(X, t),
+    "IPW (ATE)": ps_lib.standardized_mean_diff(X, t, w_ate),
+    "IPW (ATT)": ps_lib.standardized_mean_diff(X, t, w_att),
+})
+
+fig, ax = plt.subplots(figsize=(7, 3.5))
+for i, col in enumerate(balance):
+    ax.scatter(balance[col].abs(), balance.index, label=col, s=50, marker="osd"[i])
+ax.axvline(0.1, ls="--", c="grey")
+ax.set(title="Covariate balance (|standardized mean difference|)", xlabel="|SMD|"); ax.legend()
+plt.show()
+balance
+```
+
+## Estimate the effect several ways
+
+- **Regression adjustment:** model $E[Y|X,T]$ and average predicted differences. Relies entirely on the outcome model.
+- **IPW:** reweight so the treated and control groups each look like the target population. Relies entirely on the propensity model; variance blows up with extreme weights.
+- **Matching (ATT):** pair each treated unit with the control closest in (logit) propensity, within a caliper.
+- **AIPW:** combines both models; consistent if *either* is right, and efficient if both are. With cross-fitting it pairs naturally with flexible ML learners (the double/debiased ML recipe).
+
+Bootstrap SEs for IPW and matching; AIPW gets an analytic influence-function SE.
+
+```{python}
+#| label: tbl-ps-results
+#| tbl-cap: "Effect estimates by method, with the true ATE and ATT."
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
+
+def regression_adjustment(Xd, yd, td):
+    m1 = LinearRegression().fit(Xd[td == 1], yd[td == 1])
+    m0 = LinearRegression().fit(Xd[td == 0], yd[td == 0])
+    return float(np.mean(m1.predict(Xd) - m0.predict(Xd)))
+
+def bootstrap_se(fn, n_boot=200, seed=0):
+    rng = np.random.default_rng(seed)
+    draws = []
+    for _ in range(n_boot):
+        i = rng.integers(0, len(df), len(df))
+        Xb, yb, tb = X.iloc[i].reset_index(drop=True), y.iloc[i].reset_index(drop=True), t.iloc[i].reset_index(drop=True)
+        draws.append(fn(Xb, yb, tb))
+    return float(np.std(draws, ddof=1))
+
+ipw_ate = lambda Xd, yd, td: ps_lib.ipw(yd, td, ps_lib.fit_propensity(Xd, td), "ATE").estimate
+ipw_att = lambda Xd, yd, td: ps_lib.ipw(yd, td, ps_lib.fit_propensity(Xd, td), "ATT").estimate
+match = lambda Xd, yd, td: ps_lib.match_att(yd, td, ps_lib.fit_propensity(Xd, td), caliper=0.05)[0].estimate
+
+m1 = LinearRegression().fit(X[t == 1], y[t == 1]); m0 = LinearRegression().fit(X[t == 0], y[t == 0])
+aipw = ps_lib.aipw(y, t, ps, m0.predict(X), m1.predict(X))
+cf_ml = ps_lib.cross_fit_aipw(df[COVARIATES], y, t,
+                              outcome_model=GradientBoostingRegressor(max_depth=3, n_estimators=200),
+                              ps_model=GradientBoostingClassifier(max_depth=2, n_estimators=150))
+
+match_est, matches = ps_lib.match_att(y, t, ps, caliper=0.05)
+results = pd.DataFrame([
+    {"method": "naive difference", "estimand": "-", "estimate": naive, "se": np.nan},
+    {"method": "regression adjustment", "estimand": "ATE", "estimate": regression_adjustment(X, y, t), "se": bootstrap_se(regression_adjustment)},
+    {"method": "IPW (Hajek)", "estimand": "ATE", "estimate": ipw_ate(X, y, t), "se": bootstrap_se(ipw_ate)},
+    {"method": "IPW (Hajek)", "estimand": "ATT", "estimate": ipw_att(X, y, t), "se": bootstrap_se(ipw_att)},
+    {"method": match_est.name, "estimand": "ATT", "estimate": match_est.estimate, "se": bootstrap_se(match, n_boot=100)},
+    {"method": "AIPW (linear outcome, logit PS)", "estimand": "ATE", "estimate": aipw.estimate, "se": aipw.se},
+    {"method": "cross-fit AIPW (gradient boosting, raw X)", "estimand": "ATE", "estimate": cf_ml.estimate, "se": cf_ml.se},
+])
+results["truth"] = results.estimand.map({"ATE": TRUE_ATE, "ATT": TRUE_ATT})
+results
+```
+
+```{python}
+#| label: fig-ps-estimates
+#| fig-cap: "Estimates with 95% confidence intervals against the true ATE and ATT."
+#| fig-alt: "Horizontal error-bar plot of estimates for each method with vertical dotted lines at the true ATE and true ATT."
+fig, ax = plt.subplots(figsize=(9, 4))
+r = results.iloc[::-1].reset_index(drop=True)
+ax.errorbar(r.estimate, r.index, xerr=1.96 * r.se.fillna(0), fmt="o", capsize=3)
+ax.set_yticks(r.index, [f"{m} [{e}]" for m, e in zip(r.method, r.estimand)])
+ax.axvline(TRUE_ATE, c="green", ls=":", label="true ATE"); ax.axvline(TRUE_ATT, c="purple", ls=":", label="true ATT")
+ax.set(title="Estimates with 95% CIs", xlabel="effect"); ax.legend(); plt.show()
+```
+
+::: {.callout-note title="ATE vs ATT matters"}
+The treated units have larger effects than average, so the ATT exceeds the ATE. Decide the estimand from the business question: "what did the program do for people who joined?" (ATT) vs "what if we enrolled everyone?" (ATE).
+:::
+
+## Double robustness in action
+
+Deliberately break one model at a time. IPW depends only on the propensity model, regression adjustment only on the outcome model — AIPW survives as long as one of them is right.
+
+```{python}
+#| label: tbl-ps-doublerobust
+#| tbl-cap: "Double robustness: each estimator when the propensity model, the outcome model, both or neither is correct."
+X_bad = X.drop(columns="x1")   # omits x1, the strongest confounder (drives both T and Y)
+X_good = X
+
+def aipw_with(X_ps, X_out):
+    p = ps_lib.fit_propensity(X_ps, t)
+    a1 = LinearRegression().fit(X_out[t == 1], y[t == 1]); a0 = LinearRegression().fit(X_out[t == 0], y[t == 0])
+    return ps_lib.aipw(y, t, p, a0.predict(X_out), a1.predict(X_out)).estimate
+
+pd.DataFrame([
+    {"propensity model": "correct", "outcome model": "correct", "IPW": ipw_ate(X_good, y, t), "reg. adj.": regression_adjustment(X_good, y, t), "AIPW": aipw_with(X_good, X_good)},
+    {"propensity model": "correct", "outcome model": "wrong", "IPW": ipw_ate(X_good, y, t), "reg. adj.": regression_adjustment(X_bad, y, t), "AIPW": aipw_with(X_good, X_bad)},
+    {"propensity model": "wrong", "outcome model": "correct", "IPW": ipw_ate(X_bad, y, t), "reg. adj.": regression_adjustment(X_good, y, t), "AIPW": aipw_with(X_bad, X_good)},
+    {"propensity model": "wrong", "outcome model": "wrong", "IPW": ipw_ate(X_bad, y, t), "reg. adj.": regression_adjustment(X_bad, y, t), "AIPW": aipw_with(X_bad, X_bad)},
+]).assign(truth=TRUE_ATE)
+```
+
+In @tbl-ps-doublerobust, leaving the key confounder out of the **propensity** model breaks IPW but not AIPW (the outcome model rescues it); leaving it out of the **outcome** model breaks regression adjustment but not AIPW (the weights rescue it). Only when *both* are wrong does AIPW fail — double robustness is protection against one mistake, not two, and no model fixes a confounder you never measured.
+
+## Practical notes
+
+- **Design before analysis:** write down the causal graph; include pre-treatment confounders, exclude mediators and colliders (and instruments, which inflate variance and can amplify bias).
+- **Overlap first,** then balance, then estimate. Report how many units were trimmed or unmatched — it changes the population the estimate describes.
+- **Sensitivity analysis** for unmeasured confounding: E-values (VanderWeele & Ding), Rosenbaum bounds, or omitted-variable-bias bounds (Cinelli & Hazlett's `sensemakr`). "How strong would a hidden confounder need to be to explain this away?"
+- **Prefer doubly robust + cross-fitting** when using ML models for nuisance functions.
+- **Libraries:** `DoWhy` (graph-first workflow + refutation tests), `EconML` (DML, causal forests, heterogeneous effects), `causalml`, `zEpid`.

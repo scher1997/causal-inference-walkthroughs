@@ -1,0 +1,46 @@
+# Preface {.unnumbered}
+
+Six worked examples of causal-inference methods, each built on **simulated data with a known true effect**. That lets you check whether a method recovers the truth, and see how each assumption failure biases the answer.
+
+The estimators live in a small, tested package, `causalkit` (see @sec-causalkit), rather than in the chapters, so they are reusable and the chapters stay readable. Each chapter ends with practical notes and pointers to production libraries.
+
+## The six chapters
+
+| Chapter | Method | Key diagnostics shown |
+|---|---|---|
+| @sec-did | 2×2 DiD, TWFE, event-study leads/lags | Pre-trend plot, joint F-test on leads, placebo dates, violated-PT demo |
+| @sec-synth | Synthetic control vs DiD counterfactual | Pre-fit RMSPE, **backtest-based model selection**, placebo-in-space p-value, leave-one-donor-out |
+| @sec-event-studies | (A) market-model abnormal returns / CAR; (B) staggered rollout KPIs | AAR/CAAR with CIs, pre-event placebo window; TWFE bias vs Callaway–Sant'Anna |
+| @sec-rdd | Sharp RD, local polynomial | RD plot, bandwidth/kernel/order sensitivity, density (manipulation) test, covariate continuity, placebo cutoffs |
+| @sec-propensity | IPW, matching, AIPW, cross-fit AIPW (DML) | Overlap plot, love plot (SMD), ATE vs ATT, double-robustness demo |
+| @sec-geo | Interference demo, matched-pair geo test (TBR), switchback | A/A power/MDE backtest, randomization inference, carryover burn-in, block-length trade-off |
+
+: The six worked examples. {#tbl-chapters}
+
+## Choosing a method
+
+- **Many treated units, clean comparison group with similar pre-trends** → DiD (@sec-did). Staggered timing → heterogeneity-robust event study (@sec-event-studies, Part B).
+- **One or a few treated aggregates (a market, a region)** → synthetic control (@sec-synth); choose vs DiD by backtest error.
+- **Treatment set by a cutoff on a score** → RDD (@sec-rdd).
+- **Self-selected treatment, rich pre-treatment covariates** → propensity / doubly robust methods (@sec-propensity) + sensitivity analysis.
+- **You control assignment but users interfere** → randomize geos or time blocks (@sec-geo).
+- **Market reaction to news** → financial event study (@sec-event-studies, Part A).
+
+## Suggested reading order
+
+The chapters are numbered in the order the notebooks were written, but this order builds the ideas more naturally:
+
+1. @sec-did, the baseline the others push against.
+2. @sec-rdd, for clean identification.
+3. @sec-propensity, for selection on observables.
+4. @sec-synth, which builds on the DiD comparison.
+5. @sec-event-studies, which extend DiD to staggered timing.
+6. @sec-geo, which violate the no-interference assumption the others take for granted.
+
+::: {.callout-note title="Changing the output format"}
+This is a Quarto book. The `format:` block in `_quarto.yml` controls the output: HTML is active, and PDF, Word and EPUB are one uncommented line away. Run `uv run quarto render` for every active format, or `uv run quarto render --to docx` for one.
+:::
+
+::: {.callout-warning title="Scope"}
+`causalkit` is intentionally transparent and dependency-light, for learning and for prototyping. Before shipping a decision, cross-check against the mature libraries in the `production` extra (for example `rdrobust` for bias-corrected RD inference, `pyfixest` or `csdid` for staggered DiD, `pysyncon` for augmented SC, `DoWhy` or `EconML` for observational work, `GeoLift` or `matched_markets` for geo tests).
+:::
