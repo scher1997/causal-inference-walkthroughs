@@ -3,7 +3,7 @@
 ::: {.callout-tip title="Walkthrough summary"}
 DiD compares a treated market with an equal-weighted average of controls, which only works if that average shares the treated market's trend. Synthetic control learns non-negative weights summing to one over donor units, chosen to reproduce the treated unit's pre-period path. The constraints keep the counterfactual an interpolation of real units.
 
-Model selection needs out-of-sample checks. In-sample pre-period fit always favors the more flexible method, so the notebook uses a backtest. It holds out the last few pre-treatment periods, fits on the rest, and scores the forecast on that window, where the true effect is zero.
+Model selection needs out-of-sample checks. In-sample pre-period fit always favors the more flexible method, so the chapter uses a backtest. It holds out the last few pre-treatment periods, fits on the rest, and scores the forecast on that window, where the true effect is zero.
 
 With one treated unit, conventional standard errors do not apply. Placebo-in-space pretends each donor was treated, re-runs the method, and ranks the treated unit's post/pre fit ratio against those placebos. With 30 donors, the smallest possible p-value is 1/31.
 
@@ -13,15 +13,15 @@ Dropping the top-weighted donor roughly halves the estimate and doubles the pre-
 
 **Setting:** one (or a few) treated aggregate units — a city, a region, a market — and a *donor pool* of untreated units. Example: a pricing change launched only in one geographic market.
 
-DiD would compare the treated market to the **equal-weighted average** of the donors. That only works if the average happens to share the treated market's trend. Synthetic control instead **learns weights** so the weighted donor combination reproduces the treated market's pre-period path:
+DiD would compare the treated market to the **equal-weighted average** of the donors. That only works if the average happens to share the treated market's trend. Synthetic control instead **learns weights** so the weighted donor combination reproduces the treated market's pre-period path (@eq-sc):
 
-$$\hat w = \arg\min_{w} \sum_{t < T_0} \Big(y_{1t} - \sum_j w_j y_{jt}\Big)^2 \quad \text{s.t. } w_j \ge 0,\ \sum_j w_j = 1$$
+$$\hat w = \arg\min_{w} \sum_{t < T_0} \Big(y_{1t} - \sum_j w_j y_{jt}\Big)^2 \quad \text{s.t. } w_j \ge 0,\ \sum_j w_j = 1$$ {#eq-sc}
 
 The non-negativity and sum-to-one constraints keep the counterfactual an *interpolation* of real markets (no extrapolation) and typically make it sparse and interpretable.
 
 ::: {.callout-note title="Workflow"}
 1. Fit SC and a DiD counterfactual with the same interface.
-2. Compare **pre-period fit** (in-sample RMSPE).
+2. Compare **pre-period fit** (in-sample RMSPE[^rmspe]).
 3. Compare **out-of-sample fit** with in-time placebos (backtests) — the honest version of step 2.
 4. Inference via **placebo-in-space** permutation.
 5. Robustness: leave-one-donor-out.
@@ -57,8 +57,8 @@ ax.legend(); plt.show()
 #| label: fig-sc-fit
 #| fig-cap: "Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0."
 #| fig-alt: "Two panels. Left: actual treated series with synthetic-control and DiD counterfactual lines. Right: gap between actual and each counterfactual, with a dotted line at the true effect of -3."
-sc = synth.synthetic_control(wide, TREATED, TREAT_TIME)
-dd = synth.did_counterfactual(wide, TREATED, TREAT_TIME)
+sc = synth.synthetic_control(wide, TREATED, TREAT_TIME)  # <1>
+dd = synth.did_counterfactual(wide, TREATED, TREAT_TIME)  # <2>
 
 fig, axes = plt.subplots(1, 2, figsize=(13, 4))
 for res, c in ((sc, "C0"), (dd, "C1")):
@@ -71,6 +71,9 @@ for ax, t in zip(axes, ("Actual vs counterfactual", "Gap = actual − counterfac
     ax.axvline(TREAT_TIME - 0.5, ls="--", c="grey"); ax.set(title=t, xlabel="period"); ax.legend()
 plt.show()
 ```
+
+1. Learns non-negative donor weights that sum to one and best reproduce the treated market's pre-period path (@eq-sc).
+2. The DiD counterfactual: the equal-weight donor average, shifted to match the treated market's pre-period mean.
 
 ```{python}
 #| label: tbl-sc-weights
@@ -164,9 +167,25 @@ Difference-in-differences versus synthetic control.
 :::
 
 ::: {.callout-note title="Hybrids that bridge the two"}
-*Synthetic DiD* (Arkhangelsky et al., 2021) adds unit + time weights to DiD; *Augmented SC* (Ben-Michael et al., 2021) bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: `pysyncon` (SC, augmented SC, placebo tests), `SparseSC`, `synthdid` ports; Google's `CausalImpact` / `tfcausalimpact` is a Bayesian structural-time-series cousin.
+*Synthetic DiD* [@arkhangelsky2021] adds unit + time weights to DiD; *Augmented SC* [@benmichael2021] bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: `pysyncon` (SC, augmented SC, placebo tests), `SparseSC`, `synthdid` ports; Google's `CausalImpact` / `tfcausalimpact` is a Bayesian structural-time-series cousin.
 :::
 
 ::: {.callout-warning title="Practical gotchas"}
 exclude donors that could receive spillovers (neighbouring markets) or had their own interventions; match on outcome levels *and* key predictors when the pre-period is short; standardize if outcomes have very different scales across donors.
+:::
+
+[^rmspe]: RMSPE: root mean squared prediction error, the gap between the treated unit and its counterfactual over a window of periods.
+
+## Check your understanding
+
+::: {.callout-tip title="Why isn't in-sample pre-period fit enough to choose between SC and DiD?" collapse="true"}
+The more flexible method always fits the pre-period better, because its weights are chosen to do exactly that. The backtest holds out the last pre-treatment periods and scores the forecast where the true effect is zero.
+:::
+
+::: {.callout-tip title="Why can't the placebo p-value go below about 0.03 with 30 donors?" collapse="true"}
+The treated unit is ranked among 31 units (itself plus 30 placebos), so its smallest possible p-value is 1/31 ≈ 0.032.
+:::
+
+::: {.callout-important title="Try it"}
+Set `TRUE_EFFECT = 0.0` in the data cell and re-render. Does the placebo p-value stay small, and what happens to the backtest comparison?
 :::

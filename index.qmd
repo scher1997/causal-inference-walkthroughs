@@ -37,6 +37,14 @@ The chapters are numbered in the order the notebooks were written, but this orde
 5. @sec-event-studies, which extend DiD to staggered timing.
 6. @sec-geo, which violate the no-interference assumption the others take for granted.
 
+::: {.callout-tip title="Reading and review aids (HTML)"}
+- Code is folded by default; use **Code** at the top of a page to show all of it.
+- Hover over the numbers on annotated code lines for a note on what they do.
+- Hover over a citation or footnote to preview it, and click a figure to enlarge it.
+- Each chapter opens with a walkthrough summary and closes with **Check your understanding**: click a question to reveal the answer, then try the **Try it** exercise.
+- Equations, figures, tables and chapters are numbered and cross-linked.
+:::
+
 ::: {.callout-note title="Changing the output format"}
 This is a Quarto book. The `format:` block in `_quarto.yml` controls the output: HTML is active, and PDF, Word and EPUB are one uncommented line away. Run `uv run quarto render` for every active format, or `uv run quarto render --to docx` for one.
 :::

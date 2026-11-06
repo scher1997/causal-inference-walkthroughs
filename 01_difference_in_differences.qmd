@@ -15,9 +15,9 @@ Passing a pre-trend test is not proof. Pre-tests have low power, and conditionin
 
 **Question:** what did an intervention do to the treated group, relative to what would have happened without it?
 
-DiD estimates the **ATT** by comparing the *change* in the treated group to the *change* in an untreated comparison group:
+DiD estimates the **ATT**[^att] by comparing the *change* in the treated group to the *change* in an untreated comparison group:
 
-$$\widehat{ATT} = (\bar Y_{T,post} - \bar Y_{T,pre}) - (\bar Y_{C,post} - \bar Y_{C,pre})$$
+$$\widehat{ATT} = (\bar Y_{T,post} - \bar Y_{T,pre}) - (\bar Y_{C,post} - \bar Y_{C,pre})$$ {#eq-did}
 
 ::: {.callout-important title="Identifying assumption: parallel trends"}
 absent treatment, both groups would have moved in parallel. Level differences are fine; *trend* differences are not. It is untestable for the post-period, so we lean on the pre-period: if the groups tracked each other before the intervention, that is evidence (not proof) they would have kept doing so.
@@ -71,18 +71,18 @@ plt.show()
 
 ## 2×2 DiD and TWFE
 
-The canonical regression is `y ~ treated + post + treated:post`. The interaction is the DiD estimate.
+The canonical regression is `y ~ treated + post + treated:post`. The interaction is the DiD estimate (@eq-did).
 TWFE replaces the group and period dummies with **unit and period fixed effects** — identical in a balanced block-adoption design, but it also absorbs unit-level heterogeneity and lets you add time-varying covariates.
 
 ::: {.callout-important title="Cluster your standard errors"}
-**Always cluster standard errors at the unit level** (the level at which treatment is assigned): outcomes within a unit are serially correlated, and ignoring that makes CIs far too narrow (Bertrand, Duflo & Mullainathan, 2004).
+**Always cluster standard errors at the unit level** (the level at which treatment is assigned): outcomes within a unit are serially correlated, and ignoring that makes CIs far too narrow [@bertrand2004].
 :::
 
 ```{python}
 #| label: tbl-did-estimates
 #| tbl-cap: "2×2 DiD and TWFE estimates against the true effect of 2.0."
-r_2x2 = did.did_2x2(good, "y", "treated", "post", cluster="unit")
-r_twfe = did.twfe_did(good, "y", "unit", "period", "D")
+r_2x2 = did.did_2x2(good, "y", "treated", "post", cluster="unit")  # <1>
+r_twfe = did.twfe_did(good, "y", "unit", "period", "D")  # <2>
 
 pd.concat([
     r_2x2.summary(["treated:post"]).rename(index={"treated:post": "2x2 DiD"}),
@@ -90,11 +90,14 @@ pd.concat([
 ]).assign(truth=TRUE_EFFECT)
 ```
 
+1. The canonical 2×2 regression `y ~ treated + post + treated:post`. The `treated:post` coefficient is the DiD estimate (@eq-did), with standard errors clustered by unit.
+2. Two-way fixed effects: unit and period fixed effects plus the treatment indicator `D`. It matches the 2×2 estimate here because every treated unit starts in the same period.
+
 ## Event study: leads and lags
 
-Instead of one post dummy, estimate one coefficient per period relative to treatment (period −1 is the omitted reference):
+Instead of one post dummy, estimate one coefficient per period relative to treatment (period −1 is the omitted reference), as in @eq-event-study:
 
-$$y_{it} = \alpha_i + \gamma_t + \sum_{k \neq -1} \beta_k \, \mathbb{1}[t - T_0 = k] \cdot \text{treated}_i + \varepsilon_{it}$$
+$$y_{it} = \alpha_i + \gamma_t + \sum_{k \neq -1} \beta_k \, \mathbb{1}[t - T_0 = k] \cdot \text{treated}_i + \varepsilon_{it}$$ {#eq-event-study}
 
 - **Leads** ($k<0$) should be ≈ 0. They are a direct visual + statistical check of pre-trends.
 - **Lags** ($k \ge 0$) trace out the dynamic effect: does it appear immediately, build up, or fade?
@@ -163,7 +166,7 @@ Practical DiD checklist.
 :::
 
 ::: {.callout-warning title="Caveats worth knowing"}
-- *Passing a pre-trend test is not proof.* Pre-tests have low power, and conditioning on passing them distorts inference (Roth, 2022). Report sensitivity bounds — e.g. `HonestDiD` (Rambachan & Roth, 2023): "how large a post-period trend deviation would overturn the result?"
+- *Passing a pre-trend test is not proof.* Pre-tests have low power, and conditioning on passing them distorts inference [@roth2022]. Report sensitivity bounds — e.g. `HonestDiD` [@rambachan2023]: "how large a post-period trend deviation would overturn the result?"
 - *Staggered adoption* (units treated at different times) breaks TWFE when effects vary over time or across cohorts. See @sec-event-studies.
 - *Parallel trends is scale-dependent*: if it holds in levels it generally won't hold in logs. Choose the scale up front for substantive reasons.
 - *When no comparison group tracks the treated unit*, consider synthetic control (@sec-synth).
@@ -171,4 +174,20 @@ Practical DiD checklist.
 
 ::: {.callout-note title="Production tools"}
 `pyfixest` (fast high-dimensional FE, clustered/wild-bootstrap SEs, event studies), `linearmodels.PanelOLS`, `statsmodels` (`smf.ols(...).fit(cov_type="cluster", ...)`).
+:::
+
+[^att]: ATT: the average treatment effect on the treated, i.e. the average effect among units that actually received treatment.
+
+## Check your understanding
+
+::: {.callout-tip title="Why can't parallel trends be tested after treatment, and what do we check instead?" collapse="true"}
+After treatment we never observe the treated group's untreated outcomes, so the assumption is untestable there. We check the pre-period: the raw trend plot, event-study leads near zero with a joint F-test, and placebo dates. Passing is evidence, not proof, because pre-tests have low power [@roth2022].
+:::
+
+::: {.callout-tip title="Why is the TWFE estimate above 2.0 when the pre-trend is violated?" collapse="true"}
+The treated group was already drifting upward before treatment. DiD attributes the continuing drift to the treatment, so the post-period estimate is inflated.
+:::
+
+::: {.callout-important title="Try it"}
+In the first code cell change `pretrend=0.25` to a smaller value such as `0.05` and re-render. At what drift does the lead F-test stop rejecting, and how biased is the TWFE estimate then?
 :::

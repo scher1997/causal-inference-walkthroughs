@@ -15,7 +15,7 @@ The treated units have larger effects here, so the ATT exceeds the ATE. Choose t
 
 **Setting:** observational data — nobody randomized treatment. Example: customers who *chose* to enroll in a loyalty program; we want the program's effect on spend. Enrollees differ systematically (more engaged, higher income), so a naive comparison mixes the program effect with selection.
 
-**Propensity score:** $e(x) = P(T=1 \mid X=x)$. Rosenbaum & Rubin (1983): if treatment is as-good-as-random given $X$, it is also as-good-as-random given the scalar $e(X)$. So we can balance many confounders through one number.
+**Propensity score:** $e(x) = P(T=1 \mid X=x)$. @rosenbaum1983: if treatment is as-good-as-random given $X$, it is also as-good-as-random given the scalar $e(X)$. So we can balance many confounders through one number.
 
 ::: {.callout-important title="Assumptions"}
 1. **Unconfoundedness:** all common causes of treatment and outcome are in $X$. *Untestable* — it rests on domain knowledge.
@@ -45,7 +45,7 @@ print(f"treated share {t.mean():.2f} | naive difference {naive:.3f} | true ATE {
 
 ## Estimate the propensity score and check overlap
 
-Overlap is the first thing to look at. Regions where one group has (almost) no counterparts are where every estimator extrapolates — IPW weights explode there. Common remedies: trim to a region of common support (e.g. 0.05 < e < 0.95, Crump et al., 2009), or switch the estimand (ATT, or overlap weights).
+Overlap is the first thing to look at. Regions where one group has (almost) no counterparts are where every estimator extrapolates — IPW weights explode there. Common remedies: trim to a region of common support [e.g. 0.05 < e < 0.95; @crump2009], or switch the estimand (ATT, or overlap weights).
 
 ```{python}
 #| label: fig-ps-overlap
@@ -64,7 +64,7 @@ print(f"share with e(x) outside [0.05, 0.95]: {np.mean((ps < 0.05) | (ps > 0.95)
 
 ## Balance diagnostics (love plot)
 
-The goal of a propensity model is **balance**, not prediction accuracy — judge it by standardized mean differences (SMD) after weighting/matching, not by AUC. |SMD| < 0.1 is the usual rule of thumb. Check the covariates *and* relevant transformations (squares, interactions).
+The goal of a propensity model is **balance**, not prediction accuracy — judge it by standardized mean differences (SMD[^smd]) after weighting/matching, not by AUC. |SMD| < 0.1 is the usual rule of thumb. Check the covariates *and* relevant transformations (squares, interactions).
 
 ```{python}
 #| label: fig-ps-love
@@ -121,8 +121,8 @@ ipw_att = lambda Xd, yd, td: ps_lib.ipw(yd, td, ps_lib.fit_propensity(Xd, td), "
 match = lambda Xd, yd, td: ps_lib.match_att(yd, td, ps_lib.fit_propensity(Xd, td), caliper=0.05)[0].estimate
 
 m1 = LinearRegression().fit(X[t == 1], y[t == 1]); m0 = LinearRegression().fit(X[t == 0], y[t == 0])
-aipw = ps_lib.aipw(y, t, ps, m0.predict(X), m1.predict(X))
-cf_ml = ps_lib.cross_fit_aipw(df[COVARIATES], y, t,
+aipw = ps_lib.aipw(y, t, ps, m0.predict(X), m1.predict(X))  # <1>
+cf_ml = ps_lib.cross_fit_aipw(df[COVARIATES], y, t,  # <2>
                               outcome_model=GradientBoostingRegressor(max_depth=3, n_estimators=200),
                               ps_model=GradientBoostingClassifier(max_depth=2, n_estimators=150))
 
@@ -139,6 +139,9 @@ results = pd.DataFrame([
 results["truth"] = results.estimand.map({"ATE": TRUE_ATE, "ATT": TRUE_ATT})
 results
 ```
+
+1. AIPW combines the propensity score `ps` with outcome-model predictions for control (`m0`) and treated (`m1`) units. It is consistent if either model is right.
+2. The cross-fitted version fits the nuisance models out-of-fold, so flexible ML learners (gradient boosting here) do not overfit their way into bias.
 
 ```{python}
 #| label: fig-ps-estimates
@@ -188,3 +191,19 @@ In @tbl-ps-doublerobust, leaving the key confounder out of the **propensity** mo
 - **Sensitivity analysis** for unmeasured confounding: E-values (VanderWeele & Ding), Rosenbaum bounds, or omitted-variable-bias bounds (Cinelli & Hazlett's `sensemakr`). "How strong would a hidden confounder need to be to explain this away?"
 - **Prefer doubly robust + cross-fitting** when using ML models for nuisance functions.
 - **Libraries:** `DoWhy` (graph-first workflow + refutation tests), `EconML` (DML, causal forests, heterogeneous effects), `causalml`, `zEpid`.
+
+[^smd]: SMD: standardized mean difference, the difference in group means divided by the pooled standard deviation.
+
+## Check your understanding
+
+::: {.callout-tip title="Why judge a propensity model by balance rather than by AUC?" collapse="true"}
+The model's job is to balance covariates between the groups, not to predict treatment. A highly predictive model can mean poor overlap. Check that |SMD| falls below about 0.1 after weighting.
+:::
+
+::: {.callout-tip title="What does double robustness guarantee, and what doesn't it?" collapse="true"}
+AIPW is consistent if either the outcome model or the propensity model is correct. It fails when both are wrong, and it cannot fix a confounder you never measured.
+:::
+
+::: {.callout-important title="Try it"}
+In the double-robustness cell replace `x1` with `x2` in `X_bad` and re-render. Do IPW and regression adjustment still break, and what does that say about which covariates are true confounders?
+:::

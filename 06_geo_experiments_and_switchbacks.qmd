@@ -8,7 +8,7 @@ User-level A/B tests assume no interference between users. In a supply-constrain
 :::
 
 
-User-level A/B tests assume **SUTVA**: one user's treatment doesn't affect another's outcome. That breaks in:
+User-level A/B tests assume **SUTVA**[^sutva]: one user's treatment doesn't affect another's outcome. That breaks in:
 
 - **Marketplaces / shared supply** (ride-hailing, delivery, ads auctions): treated users consume supply that control users would have used.
 - **Network or market-level media** (TV, out-of-home, regional pricing): you can't target individuals at all.
@@ -65,7 +65,7 @@ The A/B test reports a ~30% lift that **doesn't exist at market level**: the pla
 
 **Design.** 40 geos with 90 days of pre-period history. Pair geos with similar pre-period volume, randomize one of each pair to treatment. Pairing on a strong predictor dramatically improves precision when you only have tens of units.
 
-**Analysis.** *Time-Based Regression* (TBR; Kerman, Wang & Vaver 2017): regress aggregate treatment-group sales on aggregate control-group sales during the pre-period, forecast the post-period counterfactual, and sum the difference. Complemented by randomization inference over the actual pair design.
+**Analysis.** *Time-Based Regression* (TBR; @kerman2017): regress aggregate treatment-group sales on aggregate control-group sales during the pre-period, forecast the post-period counterfactual, and sum the difference. Complemented by randomization inference over the actual pair design.
 
 ```{python}
 #| label: tbl-geo-pairs
@@ -122,8 +122,8 @@ plt.show()
 #| label: fig-geo-ri
 #| fig-cap: "Randomization inference: the observed log-ratio DiD against its distribution under re-randomization within pairs."
 #| fig-alt: "Histogram of the null distribution centred near zero with a red vertical line for the observed statistic far to the right."
-stat = experiments.log_ratio_did(df, TEST_START)
-ri = experiments.pair_randomization_test(pairs, stat, n_perm=2000, seed=0)
+stat = experiments.log_ratio_did(df, TEST_START)  # <1>
+ri = experiments.pair_randomization_test(pairs, stat, n_perm=2000, seed=0)  # <2>
 
 fig, ax = plt.subplots()
 ax.hist(ri["null"], bins=50, color="grey", alpha=0.7, label="re-randomized within pairs")
@@ -131,6 +131,9 @@ ax.axvline(ri["observed"], c="C3", lw=2, label=f"observed (p = {ri['p']:.4f})")
 ax.set(title="Randomization inference: log-ratio DiD", xlabel="statistic"); ax.legend(); plt.show()
 print(f"observed log-ratio DiD {ri['observed']:.4f}  ~= lift {np.expm1(ri['observed']):.2%}")
 ```
+
+1. The statistic is the log ratio of treated to control sales, post versus pre. Its exponential minus one is the relative lift.
+2. Re-randomize treatment within each pair 2,000 times to build the null distribution. The p-value comes from where the observed statistic falls in it.
 
 ::: {.callout-tip title="Geo-experiment practicalities"}
 - **Spillover across borders:** commuters and media markets leak. Use DMA-level geos, add buffer zones, or exclude border geos.
@@ -215,5 +218,21 @@ grid
 - **Cluster by block** (the unit of randomization) or use randomization inference — consecutive hours are strongly correlated.
 - **Region × time switchbacks** across several markets add units and let you include market fixed effects.
 - **Novelty/learning effects** from users or drivers adapting to frequent switches can't be fixed by burn-in; check whether the effect drifts over the test.
-- References: Bojinov, Simchi-Levi & Zhao (2023) on optimal switchback designs; DoorDash and Lyft engineering blogs on switchback practice.
+- References: @bojinov2023 on optimal switchback designs; DoorDash and Lyft engineering blogs on switchback practice.
+:::
+
+[^sutva]: SUTVA: the stable unit treatment value assumption: no interference between units, and a single version of the treatment.
+
+## Check your understanding
+
+::: {.callout-tip title="Why does the user-level A/B test show a lift that doesn't exist at market level?" collapse="true"}
+Supply is the constraint. Treated users' extra requests displace control users' orders, so the A/B comparison sees a gap that is only a reshuffling of who gets served. Interference breaks SUTVA.
+:::
+
+::: {.callout-tip title="How is the minimum detectable effect estimated before launch, and why?" collapse="true"}
+Run the full analysis many times on pre-period data with fresh random pairs and a fake test window. The spread of those placebo estimates is the noise floor, and the MDE is roughly 2.5 times their standard deviation at 80% power and α = 0.10.
+:::
+
+::: {.callout-important title="Try it"}
+Set `TRUE_LIFT` below the MDE printed in the A/A check (for example `0.01`) and re-render. Does the randomization test still detect the lift?
 :::

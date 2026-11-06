@@ -26,7 +26,7 @@ For each firm $i$ with event day $d_i$:
 
 1. **Estimation window** (here days −250 to −30): fit $r_{it} = \alpha_i + \beta_i r_{mt} + \varepsilon_{it}$. The gap before the event keeps leakage/run-up out of the benchmark.
 2. **Event window** (−5 to +10): abnormal return $AR_{it} = r_{it} - (\hat\alpha_i + \hat\beta_i r_{mt})$.
-3. Aggregate: average AR by event day (AAR), cumulative AR (CAR), and cross-sectional tests.
+3. Aggregate: average AR by event day (AAR), cumulative AR (CAR[^car]), and cross-sectional tests.
 
 ::: {.callout-note title="Simulated truth"}
 +2% on day 0 and +0.2%/day drift for 5 days, so **true CAR[0,+5] = 3.0%**.
@@ -87,9 +87,9 @@ pd.DataFrame([car_test(-5, -1), car_test(0, 0), car_test(0, 5), car_test(0, 10)]
 
 Units adopt in three cohorts (periods 6, 11, 16) plus a never-treated group. The effect differs by cohort (earlier adopters benefit more) and **grows by 0.3 per period** after adoption.
 
-Why TWFE breaks: with staggered timing, TWFE implicitly uses *already-treated* units as controls for later adopters. When effects grow over time, those "controls" are still changing because of treatment, contaminating the comparison (Goodman-Bacon, 2021; de Chaisemartin & D'Haultfœuille, 2020; Sun & Abraham, 2021).
+Why TWFE breaks: with staggered timing, TWFE implicitly uses *already-treated* units as controls for later adopters. When effects grow over time, those "controls" are still changing because of treatment, contaminating the comparison [@goodmanbacon2021; @dechaisemartin2020; @sun2021].
 
-The fix used here is **Callaway & Sant'Anna (2021)**: estimate each cohort-by-period effect $ATT(g,t)$ with a clean 2×2 comparison (cohort $g$ vs never-treated, relative to period $g-1$), then aggregate by event time.
+The fix used here is **Callaway & Sant'Anna** [-@callaway2021]: estimate each cohort-by-period effect $ATT(g,t)$ with a clean 2×2 comparison (cohort $g$ vs never-treated, relative to period $g-1$), then aggregate by event time.
 
 ```{python}
 #| label: fig-staggered-cohorts
@@ -116,8 +116,8 @@ ax.set(title="KPI by adoption cohort", xlabel="period", ylabel="mean KPI"); ax.l
 #| tbl-cap: "Static TWFE versus Callaway–Sant'Anna overall ATT, with the true average effect."
 # Static TWFE vs Callaway-Sant'Anna overall ATT
 twfe = did.twfe_did(panel, "y", "unit", "period", "D")
-gt = did.group_time_att(panel, "y", "unit", "period", "cohort")
-cs_overall = did.aggregate_overall(gt)
+gt = did.group_time_att(panel, "y", "unit", "period", "cohort")  # <1>
+cs_overall = did.aggregate_overall(gt)  # <2>
 
 boot = cluster_bootstrap(
     panel, "unit",
@@ -131,6 +131,9 @@ pd.DataFrame({
     "truth (avg effect over treated cells)": [true_overall] * 2,
 }, index=["static TWFE", "Callaway-Sant'Anna"])
 ```
+
+1. Callaway–Sant'Anna ATT(g, t): for each cohort `g` and period `t`, compare the cohort's change since period g−1 with the change among never-treated units. Pre-period cells are placebo estimates and should be near 0.
+2. The overall ATT averages the post-treatment cells, weighted by the number of units in each cell.
 
 ```{python}
 #| label: fig-staggered-event-study
@@ -159,4 +162,20 @@ Pre-period CS estimates (negative event times) are placebo tests of parallel tre
 - Rollout order is rarely random: if markets with the best expected gains go first, cohorts differ systematically. Check pre-trends **by cohort**.
 - Event-time estimates far from zero are identified from fewer cohorts — show cohort composition or trim the window.
 - Libraries: `csdid` (Python port of R `did`), `differences`, `pyfixest` (`did2s`, saturated event studies), `linearmodels`.
+:::
+
+[^car]: CAR: cumulative abnormal return, the sum of a firm's abnormal returns over a window. CAAR is its average across firms.
+
+## Check your understanding
+
+::: {.callout-tip title="Why does static TWFE go wrong with staggered adoption?" collapse="true"}
+Already-treated units serve as controls for later adopters. When effects grow over time, those controls are still changing because of treatment, which contaminates the comparison.
+:::
+
+::: {.callout-tip title="What does the pre-event window [−5, −1] tell you in the financial event study?" collapse="true"}
+It is a placebo window. A significant abnormal return there points to information leakage or a mis-dated event.
+:::
+
+::: {.callout-important title="Try it"}
+In the staggered-panel cell set `growth=0.0` and re-render. How much of the gap between static TWFE and Callaway–Sant'Anna remains once effects no longer grow?
 :::

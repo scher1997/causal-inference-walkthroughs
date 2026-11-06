@@ -12,9 +12,9 @@ Treatment is assigned by a hard cutoff on a running variable. Units just on eith
 
 **Setting:** treatment is assigned by a strict rule on a continuous *running variable*: customers with a risk score ≥ 0 get a premium offer, students above a test cutoff get a scholarship, stores above a revenue threshold get a new process.
 
-Units just above and just below the cutoff are nearly identical, so the **jump in the outcome at the cutoff** is the causal effect *for units at the threshold*:
+Units just above and just below the cutoff are nearly identical, so the **jump in the outcome at the cutoff** is the causal effect *for units at the threshold* (@eq-rd):
 
-$$\tau_{RD} = \lim_{x \downarrow c} E[Y \mid X=x] - \lim_{x \uparrow c} E[Y \mid X=x]$$
+$$\tau_{RD} = \lim_{x \downarrow c} E[Y \mid X=x] - \lim_{x \uparrow c} E[Y \mid X=x]$$ {#eq-rd}
 
 ::: {.callout-important title="Identifying assumption: smoothness at the cutoff"}
 potential outcomes are smooth (continuous) in the running variable at the cutoff — nothing else jumps there, and units can't precisely sort themselves across it.
@@ -59,13 +59,15 @@ plt.show()
 
 ## Local linear estimate
 
-Fit separate linear regressions on each side within bandwidth $h$, weighting observations closer to the cutoff more (triangular kernel). The coefficient on the treatment dummy is the jump. Local *linear* (not local constant) is standard because it has much smaller bias at a boundary.
+Fit separate linear regressions on each side within bandwidth $h$, weighting observations closer to the cutoff more (triangular kernel[^kernel]). The coefficient on the treatment dummy is the jump. Local *linear* (not local constant) is standard because it has much smaller bias at a boundary.
 
 ```{python}
-r = rdd.local_poly_rd(df.score, df.y, cutoff=CUTOFF, bandwidth=0.3, kernel="triangular", order=1)
+r = rdd.local_poly_rd(df.score, df.y, cutoff=CUTOFF, bandwidth=0.3, kernel="triangular", order=1)  # <1>
 print(f"RD estimate {r.estimate:.3f}  (SE {r.se:.3f}, 95% CI {r.ci[0]:.3f} to {r.ci[1]:.3f})  "
       f"n_left={r.n_left}, n_right={r.n_right}; truth = {TRUE_EFFECT}")
 ```
+
+1. A kernel-weighted local linear fit on each side of the cutoff: triangular weights fall to zero at distance `bandwidth` (0.3) and `order=1` is a straight line. The jump at the cutoff is the estimate, with HC1 standard errors.
 
 ## Bandwidth sensitivity
 
@@ -136,8 +138,24 @@ pd.DataFrame(placebo).sort_values("cutoff")
 
 ## Practical notes
 
-- **Don't use global high-order polynomials** (e.g. a 5th-order fit over the whole range). They give noisy, misleading estimates at the boundary (Gelman & Imbens, 2019). Use local linear/quadratic.
+- **Don't use global high-order polynomials** (e.g. a 5th-order fit over the whole range). They give noisy, misleading estimates at the boundary [@gelman2019]. Use local linear/quadratic.
 - **Fuzzy RD:** if crossing the cutoff only *raises the probability* of treatment, the jump in the outcome divided by the jump in treatment take-up is a local IV/LATE estimate (`rdrobust` handles this with `fuzzy=`).
 - **External validity:** the estimate is local to units near the cutoff. Extrapolating to units far away requires extra assumptions.
 - **Discrete running variables** (e.g. integer scores) need care — few mass points near the cutoff; see `rdrobust`/`rdlocrand` guidance.
 - **Libraries:** `rdrobust` (optimal bandwidths, robust bias-corrected inference), `rddensity` (Cattaneo–Jansson–Ma density test), `rdlocrand` (local randomization inference).
+
+[^kernel]: Triangular kernel: an observation's weight falls linearly from 1 at the cutoff to 0 at the edge of the bandwidth.
+
+## Check your understanding
+
+::: {.callout-tip title="Why use local linear regression instead of a high-order global polynomial?" collapse="true"}
+Global high-order polynomials give noisy, misleading estimates at the boundary [@gelman2019]. Local linear fits have much smaller bias at a boundary and use only nearby data.
+:::
+
+::: {.callout-tip title="What does the density test detect, and what does a significant result mean?" collapse="true"}
+It detects bunching just above or below the cutoff, a sign that units sorted themselves across it. Then units on either side are no longer comparable and the smoothness assumption fails.
+:::
+
+::: {.callout-important title="Try it"}
+In the density-test cell change `manipulation=0.6` to `0.2` and re-render. How do the log density ratio and p-value change, and at what level is the manipulation hard to see?
+:::

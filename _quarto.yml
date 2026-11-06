@@ -20,6 +20,7 @@ book:
     - part: "Designing experiments under interference"
       chapters:
         - 06_geo_experiments_and_switchbacks.qmd
+    - references.qmd
   appendices:
     - appendix_causalkit.qmd
 
@@ -38,11 +39,21 @@ format:
     code-tools: true
     fig-dpi: 150
     df-print: default
+    # Reading and review aids
+    lightbox: true               # click a figure to enlarge it
+    code-annotations: hover      # numbered notes on key lines of code
+    reference-location: margin   # footnotes in the margin
+    citation-location: margin    # citations in the margin
+    citations-hover: true        # hover a citation to see the reference
+    footnotes-hover: true
+    anchor-sections: true
   # pdf:                      # PDF via LaTeX (needs TinyTeX: quarto install tinytex)
   #   documentclass: scrbook
   #   code-fold: false
   # docx: default             # Word (test-rendered OK)
   # epub: default             # e-book
+
+bibliography: references.bib
 
 # Python cells run through Jupyter. `uv run` puts the project venv on PATH.
 jupyter: python3
