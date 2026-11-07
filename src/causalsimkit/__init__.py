@@ -1,4 +1,4 @@
-"""causalkit: small, dependency-light estimators backing the example notebooks.
+"""causalsimkit: small, dependency-light estimators backing the example notebooks.
 
 Every estimator here is deliberately transparent (numpy/scipy/sklearn only) so the
 notebooks can show the mechanics. For production work, cross-check against the

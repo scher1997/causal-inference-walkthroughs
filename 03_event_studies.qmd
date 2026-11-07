@@ -35,7 +35,7 @@ For each firm $i$ with event day $d_i$:
 ```{python}
 #| label: tbl-event-aar
 #| tbl-cap: "Average abnormal return (AAR) and its cumulative version (CAAR) by event day, first eight days."
-from causalkit import simulate, events
+from causalsimkit import simulate, events
 
 returns, market, event_day = simulate.stock_returns(n_firms=60, event_jump=0.02, drift=0.002, drift_days=5, seed=3)
 ar = events.market_model_abnormal_returns(returns, market, event_day,
@@ -95,8 +95,8 @@ The fix used here is **Callaway & Sant'Anna** [-@callaway2021]: estimate each co
 #| label: fig-staggered-cohorts
 #| fig-cap: "Mean KPI by adoption cohort. Dotted vertical lines mark each cohort's adoption period."
 #| fig-alt: "Line chart of mean KPI by period for a never-treated group and three adoption cohorts, which diverge upward after their adoption periods."
-from causalkit import did
-from causalkit.utils import cluster_bootstrap
+from causalsimkit import did
+from causalsimkit.utils import cluster_bootstrap
 
 panel = simulate.staggered_panel(n_units=120, n_periods=24, cohorts=(6, 11, 16), growth=0.3, seed=5)
 truth_by_e = panel[panel.D == 1].groupby("rel_time")["true_te"].mean()

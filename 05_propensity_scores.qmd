@@ -31,7 +31,7 @@ naive difference · regression adjustment · IPW (ATE, ATT) · propensity matchi
 {{< include _setup.qmd >}}
 
 ```{python}
-from causalkit import simulate, propensity as ps_lib
+from causalsimkit import simulate, propensity as ps_lib
 
 df = simulate.observational(n=5000, seed=21)
 COVARIATES = ["x1", "x2", "x3", "x4"]

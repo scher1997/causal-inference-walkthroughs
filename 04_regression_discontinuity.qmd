@@ -37,7 +37,7 @@ a jump of **0.5** at a cutoff of 0, with a nonlinear underlying relationship who
 #| label: fig-rd-plot
 #| fig-cap: "RD plot: binned means with local linear fits on each side of the cutoff (bandwidth 0.3)."
 #| fig-alt: "Scatter of binned mean outcome against the running variable with a straight fitted line on each side of a dashed cutoff at zero and a visible jump between them."
-from causalkit import simulate, rdd
+from causalsimkit import simulate, rdd
 
 CUTOFF, TRUE_EFFECT = 0.0, 0.5
 df = simulate.rdd_data(n=5000, cutoff=CUTOFF, effect=TRUE_EFFECT, seed=0)

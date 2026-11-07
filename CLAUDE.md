@@ -5,8 +5,8 @@ Quarto book of six causal-inference worked examples (DiD, synthetic control, eve
 ## Structure
 
 - `_quarto.yml` — book config; edit the `format:` block to change output (html active).
-- `index.qmd`, `01_…`–`06_…qmd`, `appendix_causalkit.qmd` — the content. `_setup.qmd` is the shared setup cell.
-- `src/causalkit/` — estimators; `tests/` — truth-recovery tests.
+- `index.qmd`, `01_…`–`06_…qmd`, `appendix_causalsimkit.qmd` — the content. `_setup.qmd` is the shared setup cell.
+- `src/causalsimkit/` — estimators; `tests/` — truth-recovery tests.
 
 ## How to run
 

@@ -1,11 +1,11 @@
-# The `causalkit` package {#sec-causalkit}
+# The `causalsimkit` package {#sec-causalsimkit}
 
-The estimators used in every chapter live in `src/causalkit/`, a small package with truth-recovery tests: each estimator must recover the effect planted in its simulated data.
+The estimators used in every chapter live in `src/causalsimkit/`, a small package with truth-recovery tests: each estimator must recover the effect planted in its simulated data.
 
 ## Setup
 
 ```bash
-uv sync --extra dev --extra render   # create .venv and install causalkit in editable mode
+uv sync --extra dev --extra render   # create .venv and install causalsimkit in editable mode
 uv run pytest -q                     # estimators must recover the planted effects
 uv run quarto render                 # build the book
 ```
@@ -15,7 +15,7 @@ The chapters also work without installing the package: `_setup.qmd` falls back t
 ## Layout
 
 ```text
-src/causalkit/
+src/causalsimkit/
   ols.py          OLS/WLS with HC1 and cluster-robust (CR1) SEs, Wald tests
   did.py          2x2, TWFE, event study, Callaway–Sant'Anna ATT(g,t)
   synth.py        synthetic control, DiD counterfactual, placebos, backtests

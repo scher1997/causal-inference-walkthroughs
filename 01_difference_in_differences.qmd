@@ -38,7 +38,7 @@ We use simulated data with a **known true effect of 2.0**, so we can see when th
 {{< include _setup.qmd >}}
 
 ```{python}
-from causalkit import simulate, did
+from causalsimkit import simulate, did
 
 TREAT_PERIOD, TRUE_EFFECT = 12, 2.0
 good = simulate.did_panel(effect=TRUE_EFFECT, treat_period=TREAT_PERIOD, pretrend=0.0, seed=42)

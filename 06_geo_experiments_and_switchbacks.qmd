@@ -70,7 +70,7 @@ The A/B test reports a ~30% lift that **doesn't exist at market level**: the pla
 ```{python}
 #| label: tbl-geo-pairs
 #| tbl-cap: "First six rows of the matched-pair assignment."
-from causalkit import simulate, experiments
+from causalsimkit import simulate, experiments
 
 TEST_START, TEST_END, TRUE_LIFT = 90, 120, 0.05
 base = simulate.geo_markets(n_geos=40, n_days=TEST_END, seed=3)

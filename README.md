@@ -4,7 +4,7 @@ Six worked causal-inference examples on simulated data with known effects, as a 
 
 ## Render
 
-One-time setup (creates `.venv` and installs `causalkit`):
+One-time setup (creates `.venv` and installs `causalsimkit`):
 
 ```bash
 uv sync --extra dev --extra render

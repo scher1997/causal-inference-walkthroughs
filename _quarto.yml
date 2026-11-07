@@ -22,7 +22,7 @@ book:
         - 06_geo_experiments_and_switchbacks.qmd
     - references.qmd
   appendices:
-    - appendix_causalkit.qmd
+    - appendix_causalsimkit.qmd
 
 # ---------------------------------------------------------------------------
 # OUTPUT FORMAT: edit this block to change what `quarto render` produces.

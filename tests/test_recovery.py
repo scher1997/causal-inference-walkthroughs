@@ -2,8 +2,8 @@
 import numpy as np
 import pandas as pd
 
-from causalkit import did, events, experiments, propensity, rdd, simulate, synth
-from causalkit.ols import ols
+from causalsimkit import did, events, experiments, propensity, rdd, simulate, synth
+from causalsimkit.ols import ols
 
 
 def test_ols_matches_lstsq():

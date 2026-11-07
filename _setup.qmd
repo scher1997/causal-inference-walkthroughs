@@ -1,14 +1,14 @@
 ```{python}
 #| code-summary: "Setup: imports and plotting defaults"
-# Make `causalkit` importable whether or not you ran `uv sync` / `pip install -e .`
+# Make `causalsimkit` importable whether or not you ran `uv sync` / `pip install -e .`
 import sys
 from pathlib import Path
 
 try:
-    import causalkit
+    import causalsimkit
 except ImportError:
     sys.path.insert(0, str(Path.cwd().resolve() / "src"))
-    import causalkit
+    import causalsimkit
 
 import numpy as np
 import pandas as pd

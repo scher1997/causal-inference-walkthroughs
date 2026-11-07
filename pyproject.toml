@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "causalkit"
+name = "causalsimkit"
 version = "0.1.0"
 description = "Transparent causal-inference estimators + a Quarto book of worked examples (DiD, SC, event studies, RDD, propensity, geo/switchback)"
 requires-python = ">=3.10"

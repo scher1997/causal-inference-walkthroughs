@@ -2,7 +2,7 @@
 
 Six worked examples of causal-inference methods, each built on **simulated data with a known true effect**. That lets you check whether a method recovers the truth, and see how each assumption failure biases the answer.
 
-The estimators live in a small, tested package, `causalkit` (see @sec-causalkit), rather than in the chapters, so they are reusable and the chapters stay readable. Each chapter ends with practical notes and pointers to production libraries.
+The estimators live in a small, tested package, `causalsimkit` (see @sec-causalsimkit), rather than in the chapters, so they are reusable and the chapters stay readable. Each chapter ends with practical notes and pointers to production libraries.
 
 ## The six chapters
 
@@ -50,5 +50,5 @@ This is a Quarto book. The `format:` block in `_quarto.yml` controls the output:
 :::
 
 ::: {.callout-warning title="Scope"}
-`causalkit` is intentionally transparent and dependency-light, for learning and for prototyping. Before shipping a decision, cross-check against the mature libraries in the `production` extra (for example `rdrobust` for bias-corrected RD inference, `pyfixest` or `csdid` for staggered DiD, `pysyncon` for augmented SC, `DoWhy` or `EconML` for observational work, `GeoLift` or `matched_markets` for geo tests).
+`causalsimkit` is intentionally transparent and dependency-light, for learning and for prototyping. Before shipping a decision, cross-check against the mature libraries in the `production` extra (for example `rdrobust` for bias-corrected RD inference, `pyfixest` or `csdid` for staggered DiD, `pysyncon` for augmented SC, `DoWhy` or `EconML` for observational work, `GeoLift` or `matched_markets` for geo tests).
 :::

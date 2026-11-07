@@ -37,7 +37,7 @@ the treated market's effect is **−3.0** after period 30, and its trend is stee
 #| label: fig-sc-data
 #| fig-cap: "The treated market against the donor pool and the donor average."
 #| fig-alt: "Line chart of outcome by period. Many grey donor lines and a grey donor-average line rise gently; the red treated-market line rises more steeply and drops after the dashed treatment line."
-from causalkit import simulate, synth
+from causalsimkit import simulate, synth
 
 TREAT_TIME, TRUE_EFFECT, TREATED = 30, -3.0, "treated_market"
 wide, true_weights = simulate.synth_panel(effect=TRUE_EFFECT, treat_period=TREAT_TIME, seed=11)
