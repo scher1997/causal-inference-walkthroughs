@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>2&nbsp; Synthetic Control, and Choosing Between SC and DiD – Causal Inference by Simulation</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./03_event_studies.html" rel="next">
+<link href="./01_difference_in_differences.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating slimcontent quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01_difference_in_differences.html">Panel and time-series designs</a></li><li class="breadcrumb-item"><a href="./02_synthetic_control.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Causal Inference by Simulation</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Panel and time-series designs</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01_difference_in_differences.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Difference-in-Differences (DiD)</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02_synthetic_control.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03_event_studies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Identification from cutoffs and covariates</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04_regression_discontinuity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Regression Discontinuity Design (RDD)</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05_propensity_scores.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Propensity-Score Methods</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Designing experiments under interference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06_geo_experiments_and_switchbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Geo Experiments and Switchback Testing</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./appendix_causalsimkit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">The <code>causalsimkit</code> package</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#fit-both-counterfactuals" id="toc-fit-both-counterfactuals" class="nav-link active" data-scroll-target="#fit-both-counterfactuals"><span class="header-section-number">2.1</span> Fit both counterfactuals</a></li>
+  <li><a href="#model-selection-in-sample-and-out-of-sample-fit" id="toc-model-selection-in-sample-and-out-of-sample-fit" class="nav-link" data-scroll-target="#model-selection-in-sample-and-out-of-sample-fit"><span class="header-section-number">2.2</span> Model selection: in-sample and out-of-sample fit</a></li>
+  <li><a href="#inference-placebo-in-space" id="toc-inference-placebo-in-space" class="nav-link" data-scroll-target="#inference-placebo-in-space"><span class="header-section-number">2.3</span> Inference: placebo-in-space</a></li>
+  <li><a href="#robustness-leave-one-donor-out" id="toc-robustness-leave-one-donor-out" class="nav-link" data-scroll-target="#robustness-leave-one-donor-out"><span class="header-section-number">2.4</span> Robustness: leave one donor out</a></li>
+  <li><a href="#did-vs-synthetic-control-decision-guide" id="toc-did-vs-synthetic-control-decision-guide" class="nav-link" data-scroll-target="#did-vs-synthetic-control-decision-guide"><span class="header-section-number">2.5</span> DiD vs synthetic control: decision guide</a></li>
+  <li><a href="#check-your-understanding" id="toc-check-your-understanding" class="nav-link" data-scroll-target="#check-your-understanding"><span class="header-section-number">2.6</span> Check your understanding</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01_difference_in_differences.html">Panel and time-series designs</a></li><li class="breadcrumb-item"><a href="./02_synthetic_control.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></a></li></ol></nav>
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span id="sec-synth" class="quarto-section-identifier"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="callout callout-style-default callout-tip callout-titled" title="Walkthrough summary">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Walkthrough summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>DiD compares a treated market with an equal-weighted average of controls, which only works if that average shares the treated market’s trend. Synthetic control learns non-negative weights summing to one over donor units, chosen to reproduce the treated unit’s pre-period path. The constraints keep the counterfactual an interpolation of real units.</p>
+<p>Model selection needs out-of-sample checks. In-sample pre-period fit always favors the more flexible method, so the chapter uses a backtest. It holds out the last few pre-treatment periods, fits on the rest, and scores the forecast on that window, where the true effect is zero.</p>
+<p>With one treated unit, conventional standard errors do not apply. Placebo-in-space pretends each donor was treated, re-runs the method, and ranks the treated unit’s post/pre fit ratio against those placebos. With 30 donors, the smallest possible p-value is 1/31.</p>
+<p>Dropping the top-weighted donor roughly halves the estimate and doubles the pre-period error. That fragility is something to investigate, not bury.</p>
+</div>
+</div>
+<p><strong>Setting:</strong> one (or a few) treated aggregate units — a city, a region, a market — and a <em>donor pool</em> of untreated units. Example: a pricing change launched only in one geographic market.</p>
+<p>DiD would compare the treated market to the <strong>equal-weighted average</strong> of the donors. That only works if the average happens to share the treated market’s trend. Synthetic control instead <strong>learns weights</strong> so the weighted donor combination reproduces the treated market’s pre-period path (<a href="#eq-sc" class="quarto-xref">Equation&nbsp;<span>2.1</span></a>):</p>
+<p><span id="eq-sc"><span class="math display">\[\hat w = \arg\min_{w} \sum_{t &lt; T_0} \Big(y_{1t} - \sum_j w_j y_{jt}\Big)^2 \quad \text{s.t. } w_j \ge 0,\ \sum_j w_j = 1 \tag{2.1}\]</span></span></p>
+<p>The non-negativity and sum-to-one constraints keep the counterfactual an <em>interpolation</em> of real markets (no extrapolation) and typically make it sparse and interpretable.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Workflow">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Workflow
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Fit SC and a DiD counterfactual with the same interface.</li>
+<li>Compare <strong>pre-period fit</strong> (in-sample RMSPE<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>).</li>
+<li>Compare <strong>out-of-sample fit</strong> with in-time placebos (backtests) — the honest version of step 2.</li>
+<li>Inference via <strong>placebo-in-space</strong> permutation.</li>
+<li>Robustness: leave-one-donor-out.</li>
+</ol>
+</div>
+</div>
+<div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup>&nbsp;RMSPE: root mean squared prediction error, the gap between the treated unit and its counterfactual over a window of periods.</p></div></div><div class="callout callout-style-default callout-note callout-titled" title="Simulated truth">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Simulated truth
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>the treated market’s effect is <strong>−3.0</strong> after period 30, and its trend is steeper than the average donor’s.</p>
+</div>
+</div>
+<div id="cf9b0219" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Setup: imports and plotting defaults</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Make `causalsimkit` importable whether or not you ran `uv sync` / `pip install -e .`</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>:</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> causalsimkit</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> <span class="pp">ImportError</span>:</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    sys.path.insert(<span class="dv">0</span>, <span class="bu">str</span>(Path.cwd().resolve() <span class="op">/</span> <span class="st">"src"</span>))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> causalsimkit</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>plt.rcParams.update({<span class="st">"figure.figsize"</span>: (<span class="dv">9</span>, <span class="dv">4</span>), <span class="st">"axes.spines.top"</span>: <span class="va">False</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"axes.spines.right"</span>: <span class="va">False</span>, <span class="st">"axes.grid"</span>: <span class="va">True</span>, <span class="st">"grid.alpha"</span>: <span class="fl">0.3</span>})</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.precision"</span>, <span class="dv">3</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.width"</span>, <span class="dv">140</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.max_columns"</span>, <span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div id="cell-fig-sc-data" class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> simulate, synth</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>TREAT_TIME, TRUE_EFFECT, TREATED <span class="op">=</span> <span class="dv">30</span>, <span class="op">-</span><span class="fl">3.0</span>, <span class="st">"treated_market"</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>wide, true_weights <span class="op">=</span> simulate.synth_panel(effect<span class="op">=</span>TRUE_EFFECT, treat_period<span class="op">=</span>TREAT_TIME, seed<span class="op">=</span><span class="dv">11</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide.drop(columns<span class="op">=</span>TREATED), c<span class="op">=</span><span class="st">"lightgrey"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide.drop(columns<span class="op">=</span>TREATED).mean(axis<span class="op">=</span><span class="dv">1</span>), c<span class="op">=</span><span class="st">"grey"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"donor average"</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide[TREATED], c<span class="op">=</span><span class="st">"C3"</span>, lw<span class="op">=</span><span class="fl">2.5</span>, label<span class="op">=</span><span class="st">"treated market"</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>ax.axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"k"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(xlabel<span class="op">=</span><span class="st">"period"</span>, ylabel<span class="op">=</span><span class="st">"outcome (e.g. weekly sales)"</span>, title<span class="op">=</span><span class="st">"Treated market vs donor pool"</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-sc-data" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Line chart of outcome by period. Many grey donor lines and a grey donor-average line rise gently; the red treated-market line rises more steeply and drops after the dashed treatment line.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sc-data-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="02_synthetic_control_files/figure-html/fig-sc-data-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;2.1: The treated market against the donor pool and the donor average."><img src="02_synthetic_control_files/figure-html/fig-sc-data-output-1.png" alt="Line chart of outcome by period. Many grey donor lines and a grey donor-average line rise gently; the red treated-market line rises more steeply and drops after the dashed treatment line." width="1147" height="588" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sc-data-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2.1: The treated market against the donor pool and the donor average.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<section id="fit-both-counterfactuals" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="fit-both-counterfactuals"><span class="header-section-number">2.1</span> Fit both counterfactuals</h2>
+<div id="cell-fig-sc-fit" class="cell" data-execution_count="3">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="annotated-cell-3"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><button class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="1">1</button><span id="annotated-cell-3-1" class="code-annotation-target"><a href="#annotated-cell-3-1" aria-hidden="true" tabindex="-1"></a>sc <span class="op">=</span> synth.synthetic_control(wide, TREATED, TREAT_TIME)</span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="2">2</button><span id="annotated-cell-3-2" class="code-annotation-target"><a href="#annotated-cell-3-2" aria-hidden="true" tabindex="-1"></a>dd <span class="op">=</span> synth.did_counterfactual(wide, TREATED, TREAT_TIME)</span>
+<span id="annotated-cell-3-3"><a href="#annotated-cell-3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-4"><a href="#annotated-cell-3-4" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="annotated-cell-3-5"><a href="#annotated-cell-3-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> res, c <span class="kw">in</span> ((sc, <span class="st">"C0"</span>), (dd, <span class="st">"C1"</span>)):</span>
+<span id="annotated-cell-3-6"><a href="#annotated-cell-3-6" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">0</span>].plot(res.counterfactual, c<span class="op">=</span>c, ls<span class="op">=</span><span class="st">"--"</span>, label<span class="op">=</span><span class="ss">f"</span><span class="sc">{</span>res<span class="sc">.</span>method<span class="sc">}</span><span class="ss"> counterfactual"</span>)</span>
+<span id="annotated-cell-3-7"><a href="#annotated-cell-3-7" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">1</span>].plot(res.gap, c<span class="op">=</span>c, label<span class="op">=</span>res.method)</span>
+<span id="annotated-cell-3-8"><a href="#annotated-cell-3-8" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].plot(wide[TREATED], c<span class="op">=</span><span class="st">"C3"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"actual"</span>)</span>
+<span id="annotated-cell-3-9"><a href="#annotated-cell-3-9" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].axhline(TRUE_EFFECT, c<span class="op">=</span><span class="st">"green"</span>, ls<span class="op">=</span><span class="st">":"</span>, label<span class="op">=</span><span class="st">"true effect"</span>)</span>
+<span id="annotated-cell-3-10"><a href="#annotated-cell-3-10" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="annotated-cell-3-11"><a href="#annotated-cell-3-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax, t <span class="kw">in</span> <span class="bu">zip</span>(axes, (<span class="st">"Actual vs counterfactual"</span>, <span class="st">"Gap = actual − counterfactual"</span>)):</span>
+<span id="annotated-cell-3-12"><a href="#annotated-cell-3-12" aria-hidden="true" tabindex="-1"></a>    ax.axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)<span class="op">;</span> ax.<span class="bu">set</span>(title<span class="op">=</span>t, xlabel<span class="op">=</span><span class="st">"period"</span>)<span class="op">;</span> ax.legend()</span>
+<span id="annotated-cell-3-13"><a href="#annotated-cell-3-13" aria-hidden="true" tabindex="-1"></a>plt.show()</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-annotation">
+<dl class="code-annotation-container-hidden code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-cell="annotated-cell-3" data-code-lines="1" data-code-annotation="1">Learns non-negative donor weights that sum to one and best reproduce the treated market’s pre-period path (<a href="#eq-sc" class="quarto-xref">Equation&nbsp;<span>2.1</span></a>).</span>
+</dd>
+<dt data-target-cell="annotated-cell-3" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-cell="annotated-cell-3" data-code-lines="2" data-code-annotation="2">The DiD counterfactual: the equal-weight donor average, shifted to match the treated market’s pre-period mean.</span>
+</dd>
+</dl>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-sc-fit" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Two panels. Left: actual treated series with synthetic-control and DiD counterfactual lines. Right: gap between actual and each counterfactual, with a dotted line at the true effect of -3.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sc-fit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="02_synthetic_control_files/figure-html/fig-sc-fit-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Figure&nbsp;2.2: Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0."><img src="02_synthetic_control_files/figure-html/fig-sc-fit-output-1.png" alt="Two panels. Left: actual treated series with synthetic-control and DiD counterfactual lines. Right: gap between actual and each counterfactual, with a dotted line at the true effect of -3." width="1583" height="588" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sc-fit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2.2: Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-execution_count="4">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>w <span class="op">=</span> pd.DataFrame({<span class="st">"estimated"</span>: sc.weights, <span class="st">"true"</span>: true_weights})</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>w[(w.estimated <span class="op">&gt;</span> <span class="fl">0.01</span>) <span class="op">|</span> (w.true <span class="op">&gt;</span> <span class="dv">0</span>)].sort_values(<span class="st">"estimated"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sc-weights" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="4">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sc-weights-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2.1: Estimated versus true donor weights for donors with non-trivial weight.
+</figcaption>
+<div aria-describedby="tbl-sc-weights-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">estimated</th>
+<th data-quarto-table-cell-role="th">true</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">market_19</th>
+<td>0.516</td>
+<td>0.5</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">market_08</th>
+<td>0.252</td>
+<td>0.2</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">market_03</th>
+<td>0.147</td>
+<td>0.0</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">market_24</th>
+<td>0.045</td>
+<td>0.0</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">market_14</th>
+<td>0.041</td>
+<td>0.3</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>SC concentrates weight on a handful of donors. It need not recover the <em>generating</em> weights exactly — with few latent factors, many donor combinations reproduce the same path — and that’s fine: the target is the counterfactual trajectory, not the weights themselves. In <a href="#fig-sc-fit" class="quarto-xref">Figure&nbsp;<span>2.2</span></a>, DiD’s gap drifts during the <em>pre</em>-period — a red flag that its counterfactual doesn’t share the treated market’s trend.</p>
+</section>
+<section id="model-selection-in-sample-and-out-of-sample-fit" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="model-selection-in-sample-and-out-of-sample-fit"><span class="header-section-number">2.2</span> Model selection: in-sample and out-of-sample fit</h2>
+<p>In-sample pre-period RMSPE always favours the more flexible method, so on its own it’s not a fair comparison. The <strong>backtest</strong> holds out the last <em>h</em> pre-treatment periods, fits on the rest, and scores the “forecast” on the held-out window where the true effect is zero. Pick the method with the lower out-of-sample error — the same logic as cross-validation, respecting time order.</p>
+<div class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>rows <span class="op">=</span> []</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, method <span class="kw">in</span> {<span class="st">"synthetic_control"</span>: synth.synthetic_control, <span class="st">"did"</span>: synth.did_counterfactual}.items():</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    res <span class="op">=</span> method(wide, TREATED, TREAT_TIME)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    row <span class="op">=</span> {<span class="st">"method"</span>: name, <span class="st">"pre_rmspe (in-sample)"</span>: res.pre_rmspe}</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> h <span class="kw">in</span> (<span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">8</span>):</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        row[<span class="ss">f"backtest_rmspe h=</span><span class="sc">{</span>h<span class="sc">}</span><span class="ss">"</span>] <span class="op">=</span> synth.backtest(wide, TREATED, TREAT_TIME, h, method)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    row[<span class="st">"ATT estimate"</span>] <span class="op">=</span> res.att</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    rows.append(row)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(rows).set_index(<span class="st">"method"</span>).assign(true_ATT<span class="op">=</span>TRUE_EFFECT)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sc-selection" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="5">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sc-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2.2: In-sample and backtest error for each method, with the ATT estimate and the truth.
+</figcaption>
+<div aria-describedby="tbl-sc-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="5">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">pre_rmspe (in-sample)</th>
+<th data-quarto-table-cell-role="th">backtest_rmspe h=4</th>
+<th data-quarto-table-cell-role="th">backtest_rmspe h=6</th>
+<th data-quarto-table-cell-role="th">backtest_rmspe h=8</th>
+<th data-quarto-table-cell-role="th">ATT estimate</th>
+<th data-quarto-table-cell-role="th">true_ATT</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">method</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">synthetic_control</th>
+<td>0.453</td>
+<td>0.318</td>
+<td>0.385</td>
+<td>0.396</td>
+<td>-2.962</td>
+<td>-3.0</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">did</th>
+<td>2.467</td>
+<td>4.178</td>
+<td>4.275</td>
+<td>4.281</td>
+<td>2.389</td>
+<td>-3.0</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="inference-placebo-in-space" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="inference-placebo-in-space"><span class="header-section-number">2.3</span> Inference: placebo-in-space</h2>
+<p>With one treated unit, conventional standard errors don’t apply. Instead, pretend each donor was treated, re-run SC, and ask: <em>is the treated market’s post/pre RMSPE ratio extreme relative to the placebos?</em> The permutation p-value is its rank. Using the <strong>ratio</strong> (not the raw post gap) penalises placebos that fit poorly pre-treatment.</p>
+<div id="cell-fig-sc-placebo" class="cell" data-execution_count="6">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>placebos <span class="op">=</span> synth.placebo_in_space(wide, TREATED, TREAT_TIME, method<span class="op">=</span>synth.synthetic_control)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>p_val <span class="op">=</span> synth.permutation_pvalue(placebos, TREATED)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Common practice: hide placebos with very poor pre-fit when plotting (here &gt; 5x the treated pre-RMSPE).</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>good_fit <span class="op">=</span> placebos[placebos.pre_rmspe <span class="op">&lt;=</span> <span class="dv">5</span> <span class="op">*</span> placebos.loc[TREATED, <span class="st">"pre_rmspe"</span>]]</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> u, row <span class="kw">in</span> good_fit.iterrows():</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">0</span>].plot(row.gap, c<span class="op">=</span><span class="st">"C3"</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="st">"lightgrey"</span>, lw<span class="op">=</span><span class="fl">2.5</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="fl">0.8</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"k"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Gaps: treated (red) vs placebo donors"</span>, xlabel<span class="op">=</span><span class="st">"period"</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>ratios <span class="op">=</span> placebos[<span class="st">"ratio"</span>].sort_values()</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].barh(<span class="bu">range</span>(<span class="bu">len</span>(ratios)), ratios, color<span class="op">=</span>[<span class="st">"C3"</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="st">"grey"</span> <span class="cf">for</span> u <span class="kw">in</span> ratios.index])</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="ss">f"post/pre RMSPE ratio — permutation p = </span><span class="sc">{</span>p_val<span class="sc">:.3f}</span><span class="ss">"</span>, yticks<span class="op">=</span>[])</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-sc-placebo" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Left: grey placebo gap lines near zero and one red treated line far below zero after treatment. Right: horizontal bars of RMSPE ratios with the treated market's bar the longest.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sc-placebo-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="02_synthetic_control_files/figure-html/fig-sc-placebo-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Figure&nbsp;2.3: Placebo-in-space inference: gap paths for the treated market and placebo donors (left) and the ranked post/pre RMSPE ratios (right)."><img src="02_synthetic_control_files/figure-html/fig-sc-placebo-output-1.png" alt="Left: grey placebo gap lines near zero and one red treated line far below zero after treatment. Right: horizontal bars of RMSPE ratios with the treated market's bar the longest." width="1587" height="588" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sc-placebo-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2.3: Placebo-in-space inference: gap paths for the treated market and placebo donors (left) and the ranked post/pre RMSPE ratios (right).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>With 30 donors the smallest attainable p-value is 1/31 ≈ 0.032: placebo inference needs a reasonably large donor pool.</p>
+</section>
+<section id="robustness-leave-one-donor-out" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="robustness-leave-one-donor-out"><span class="header-section-number">2.4</span> Robustness: leave one donor out</h2>
+<p>If the result hinges on a single donor (which might have had its own shock), it’s fragile. Drop each donor with positive weight and refit.</p>
+<div class="cell" data-execution_count="7">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>loo <span class="op">=</span> []</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> donor <span class="kw">in</span> sc.weights[sc.weights <span class="op">&gt;</span> <span class="fl">0.01</span>].index:</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    r <span class="op">=</span> synth.synthetic_control(wide.drop(columns<span class="op">=</span>donor), TREATED, TREAT_TIME)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    loo.append({<span class="st">"dropped"</span>: donor, <span class="st">"weight_in_full_fit"</span>: sc.weights[donor], <span class="st">"ATT"</span>: r.att, <span class="st">"pre_rmspe"</span>: r.pre_rmspe})</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(loo).assign(full_ATT<span class="op">=</span>sc.att)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-sc-loo" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="7">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sc-loo-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2.3: Leave-one-donor-out refits for each donor with positive weight.
+</figcaption>
+<div aria-describedby="tbl-sc-loo-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="7">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">dropped</th>
+<th data-quarto-table-cell-role="th">weight_in_full_fit</th>
+<th data-quarto-table-cell-role="th">ATT</th>
+<th data-quarto-table-cell-role="th">pre_rmspe</th>
+<th data-quarto-table-cell-role="th">full_ATT</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>market_03</td>
+<td>0.147</td>
+<td>-3.052</td>
+<td>0.458</td>
+<td>-2.962</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>market_08</td>
+<td>0.252</td>
+<td>-2.842</td>
+<td>0.512</td>
+<td>-2.962</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>market_14</td>
+<td>0.041</td>
+<td>-2.965</td>
+<td>0.453</td>
+<td>-2.962</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>market_19</td>
+<td>0.516</td>
+<td>-1.403</td>
+<td>0.920</td>
+<td>-2.962</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>market_24</td>
+<td>0.045</td>
+<td>-2.920</td>
+<td>0.454</td>
+<td>-2.962</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>In <a href="#tbl-sc-loo" class="quarto-xref">Table&nbsp;<span>2.3</span></a>, dropping most donors barely moves the estimate, but dropping the top-weighted donor roughly halves it <em>and</em> doubles the pre-period RMSPE — the remaining pool can’t reproduce the treated market as well. That’s the kind of dependence to report and investigate (is that donor genuinely the best comparison, or did it have its own shock?), and a natural case for augmented SC, which corrects for imperfect pre-fit.</p>
+</section>
+<section id="did-vs-synthetic-control-decision-guide" class="level2 page-columns page-full" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="did-vs-synthetic-control-decision-guide"><span class="header-section-number">2.5</span> DiD vs synthetic control: decision guide</h2>
+<div id="tbl-sc-vs-did" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sc-vs-did-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2.4: Difference-in-differences versus synthetic control.
+</figcaption>
+<div aria-describedby="tbl-sc-vs-did-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>DiD</th>
+<th>Synthetic control</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Treated units</td>
+<td>Many</td>
+<td>One / few aggregates</td>
+</tr>
+<tr class="even">
+<td>Comparison</td>
+<td>Equal-weight (or regression) average of controls</td>
+<td>Data-driven convex weights</td>
+</tr>
+<tr class="odd">
+<td>Key assumption</td>
+<td>Parallel trends with the average control</td>
+<td>Treated unit lies in the convex hull of donors; donor combination keeps tracking it</td>
+</tr>
+<tr class="even">
+<td>Needs</td>
+<td>A control group with similar trends</td>
+<td>Long pre-period; donors not hit by the treatment or spillovers</td>
+</tr>
+<tr class="odd">
+<td>Inference</td>
+<td>Clustered SEs</td>
+<td>Placebo permutations / conformal</td>
+</tr>
+<tr class="even">
+<td>Fails when</td>
+<td>Trends diverge</td>
+<td>Treated unit is extreme (outside donor hull) — weights can’t reach it</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="Workflow">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Workflow
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>plot pre-trends; (2) fit both; (3) compare <em>backtest</em> error; (4) if they agree, report both — agreement is reassuring; if they disagree, the backtest tells you which counterfactual to trust; (5) placebo inference + leave-one-out.</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Hybrids that bridge the two">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Hybrids that bridge the two
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><em>Synthetic DiD</em> <span class="citation" data-cites="arkhangelsky2021">(<a href="references.html#ref-arkhangelsky2021" role="doc-biblioref">Arkhangelsky et al. 2021</a>)</span> adds unit + time weights to DiD; <em>Augmented SC</em> <span class="citation" data-cites="benmichael2021">(<a href="references.html#ref-benmichael2021" role="doc-biblioref">Ben-Michael et al. 2021</a>)</span> bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: <code>pysyncon</code> (SC, augmented SC, placebo tests), <code>SparseSC</code>, <code>synthdid</code> ports; Google’s <code>CausalImpact</code> / <code>tfcausalimpact</code> is a Bayesian structural-time-series cousin.</p>
+</div>
+</div>
+<div class="no-row-height column-margin column-container"><div id="ref-benmichael2021" class="csl-entry" role="listitem">
+Ben-Michael, Eli, Avi Feller, and Jesse Rothstein. 2021. <span>“The Augmented Synthetic Control Method.”</span> <em>Journal of the American Statistical Association</em>.
+</div></div><div class="no-row-height column-margin column-container"><div id="ref-arkhangelsky2021" class="csl-entry" role="listitem">
+Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager. 2021. <span>“Synthetic Difference-in-Differences.”</span> <em>American Economic Review</em>.
+</div></div><div class="callout callout-style-default callout-warning callout-titled" title="Practical gotchas">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Practical gotchas
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>exclude donors that could receive spillovers (neighbouring markets) or had their own interventions; match on outcome levels <em>and</em> key predictors when the pre-period is short; standardize if outcomes have very different scales across donors.</p>
+</div>
+</div>
+</section>
+<section id="check-your-understanding" class="level2" data-number="2.6">
+<h2 data-number="2.6" class="anchored" data-anchor-id="check-your-understanding"><span class="header-section-number">2.6</span> Check your understanding</h2>
+<div class="callout callout-style-default callout-tip callout-titled" title="Why isn't in-sample pre-period fit enough to choose between SC and DiD?">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Why isn’t in-sample pre-period fit enough to choose between SC and DiD?
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The more flexible method always fits the pre-period better, because its weights are chosen to do exactly that. The backtest holds out the last pre-treatment periods and scores the forecast where the true effect is zero.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="Why can't the placebo p-value go below about 0.03 with 30 donors?">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Why can’t the placebo p-value go below about 0.03 with 30 donors?
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-8" class="callout-8-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The treated unit is ranked among 31 units (itself plus 30 placebos), so its smallest possible p-value is 1/31 ≈ 0.032.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-important callout-titled" title="Try it">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Try it
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Set <code>TRUE_EFFECT = 0.0</code> in the data cell and re-render. Does the placebo p-value stay small, and what happens to the backtest comparison?</p>
+</div>
+</div>
+
+
+<!-- -->
+
+
+</section>
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        const annoteTargets = window.document.querySelectorAll('.code-annotation-anchor');
+        for (let i=0; i<annoteTargets.length; i++) {
+          const annoteTarget = annoteTargets[i];
+          const targetCell = annoteTarget.getAttribute("data-target-cell");
+          const targetAnnotation = annoteTarget.getAttribute("data-target-annotation");
+          const contentFn = () => {
+            const content = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+            if (content) {
+              const tipContent = content.cloneNode(true);
+              tipContent.classList.add("code-annotation-tip-content");
+              return tipContent.outerHTML;
+            }
+          }
+          const config = {
+            allowHTML: true,
+            content: contentFn,
+            onShow: (instance) => {
+              selectCodeLines(instance.reference);
+              instance.reference.classList.add('code-annotation-active');
+              window.tippy.hideAll();
+            },
+            onHide: (instance) => {
+              unselectCodeLines();
+              instance.reference.classList.remove('code-annotation-active');
+            },
+            maxWidth: 300,
+            delay: [50, 0],
+            duration: [200, 0],
+            offset: [5, 10],
+            arrow: true,
+            appendTo: function(el) {
+              return el.parentElement.parentElement.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'quarto',
+            placement: 'right',
+            popperOptions: {
+              modifiers: [
+              {
+                name: 'flip',
+                options: {
+                  flipVariations: false, // true by default
+                  allowedAutoPlacements: ['right'],
+                  fallbackPlacements: ['right', 'top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end', 'left'],
+                },
+              },
+              {
+                name: 'preventOverflow',
+                options: {
+                  mainAxis: false,
+                  altAxis: false
+                }
+              }
+              ]        
+            }      
+          };
+          window.tippy(annoteTarget, config); 
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./01_difference_in_differences.html" class="pagination-link" aria-label="Difference-in-Differences (DiD)">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Difference-in-Differences (DiD)</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./03_event_studies.html" class="pagination-link" aria-label="Event Studies">
+        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># Synthetic Control, and Choosing Between SC and DiD {#sec-synth}</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Walkthrough summary"}</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>DiD compares a treated market with an equal-weighted average of controls, which only works if that average shares the treated market's trend. Synthetic control learns non-negative weights summing to one over donor units, chosen to reproduce the treated unit's pre-period path. The constraints keep the counterfactual an interpolation of real units.</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>Model selection needs out-of-sample checks. In-sample pre-period fit always favors the more flexible method, so the chapter uses a backtest. It holds out the last few pre-treatment periods, fits on the rest, and scores the forecast on that window, where the true effect is zero.</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>With one treated unit, conventional standard errors do not apply. Placebo-in-space pretends each donor was treated, re-runs the method, and ranks the treated unit's post/pre fit ratio against those placebos. With 30 donors, the smallest possible p-value is 1/31.</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>Dropping the top-weighted donor roughly halves the estimate and doubles the pre-period error. That fragility is something to investigate, not bury.</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>**Setting:** one (or a few) treated aggregate units — a city, a region, a market — and a *donor pool* of untreated units. Example: a pricing change launched only in one geographic market.</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>DiD would compare the treated market to the **equal-weighted average** of the donors. That only works if the average happens to share the treated market's trend. Synthetic control instead **learns weights** so the weighted donor combination reproduces the treated market's pre-period path (@eq-sc):</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>$$\hat w = \arg\min_{w} \sum_{t &lt; T_0} \Big(y_{1t} - \sum_j w_j y_{jt}\Big)^2 \quad \text{s.t. } w_j \ge 0,\ \sum_j w_j = 1$$ {#eq-sc}</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>The non-negativity and sum-to-one constraints keep the counterfactual an *interpolation* of real markets (no extrapolation) and typically make it sparse and interpretable.</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>::: {.callout-note title="Workflow"}</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Fit SC and a DiD counterfactual with the same interface.</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Compare **pre-period fit** (in-sample RMSPE<span class="ot">[^rmspe]</span>).</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Compare **out-of-sample fit** with in-time placebos (backtests) — the honest version of step 2.</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>Inference via **placebo-in-space** permutation.</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>Robustness: leave-one-donor-out.</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>::: {.callout-note title="Simulated truth"}</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>the treated market's effect is **−3.0** after period 30, and its trend is steeper than the average donor's.</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>{{&lt; include _setup.qmd &gt;}}</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-sc-data</span></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "The treated market against the donor pool and the donor average."</span></span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Line chart of outcome by period. Many grey donor lines and a grey donor-average line rise gently; the red treated-market line rises more steeply and drops after the dashed treatment line."</span></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> simulate, synth</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>TREAT_TIME, TRUE_EFFECT, TREATED <span class="op">=</span> <span class="dv">30</span>, <span class="op">-</span><span class="fl">3.0</span>, <span class="st">"treated_market"</span></span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>wide, true_weights <span class="op">=</span> simulate.synth_panel(effect<span class="op">=</span>TRUE_EFFECT, treat_period<span class="op">=</span>TREAT_TIME, seed<span class="op">=</span><span class="dv">11</span>)</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide.drop(columns<span class="op">=</span>TREATED), c<span class="op">=</span><span class="st">"lightgrey"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide.drop(columns<span class="op">=</span>TREATED).mean(axis<span class="op">=</span><span class="dv">1</span>), c<span class="op">=</span><span class="st">"grey"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"donor average"</span>)</span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>ax.plot(wide.index, wide[TREATED], c<span class="op">=</span><span class="st">"C3"</span>, lw<span class="op">=</span><span class="fl">2.5</span>, label<span class="op">=</span><span class="st">"treated market"</span>)</span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>ax.axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"k"</span>)</span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(xlabel<span class="op">=</span><span class="st">"period"</span>, ylabel<span class="op">=</span><span class="st">"outcome (e.g. weekly sales)"</span>, title<span class="op">=</span><span class="st">"Treated market vs donor pool"</span>)</span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> plt.show()</span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a><span class="fu">## Fit both counterfactuals</span></span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-sc-fit</span></span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0."</span></span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Two panels. Left: actual treated series with synthetic-control and DiD counterfactual lines. Right: gap between actual and each counterfactual, with a dotted line at the true effect of -3."</span></span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>sc <span class="op">=</span> synth.synthetic_control(wide, TREATED, TREAT_TIME)  <span class="co"># &lt;1&gt;</span></span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>dd <span class="op">=</span> synth.did_counterfactual(wide, TREATED, TREAT_TIME)  <span class="co"># &lt;2&gt;</span></span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> res, c <span class="kw">in</span> ((sc, <span class="st">"C0"</span>), (dd, <span class="st">"C1"</span>)):</span>
+<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">0</span>].plot(res.counterfactual, c<span class="op">=</span>c, ls<span class="op">=</span><span class="st">"--"</span>, label<span class="op">=</span><span class="ss">f"</span><span class="sc">{</span>res<span class="sc">.</span>method<span class="sc">}</span><span class="ss"> counterfactual"</span>)</span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">1</span>].plot(res.gap, c<span class="op">=</span>c, label<span class="op">=</span>res.method)</span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].plot(wide[TREATED], c<span class="op">=</span><span class="st">"C3"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"actual"</span>)</span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].axhline(TRUE_EFFECT, c<span class="op">=</span><span class="st">"green"</span>, ls<span class="op">=</span><span class="st">":"</span>, label<span class="op">=</span><span class="st">"true effect"</span>)</span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax, t <span class="kw">in</span> <span class="bu">zip</span>(axes, (<span class="st">"Actual vs counterfactual"</span>, <span class="st">"Gap = actual − counterfactual"</span>)):</span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a>    ax.axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)<span class="op">;</span> ax.<span class="bu">set</span>(title<span class="op">=</span>t, xlabel<span class="op">=</span><span class="st">"period"</span>)<span class="op">;</span> ax.legend()</span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Learns non-negative donor weights that sum to one and best reproduce the treated market's pre-period path (@eq-sc).</span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>The DiD counterfactual: the equal-weight donor average, shifted to match the treated market's pre-period mean.</span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-sc-weights</span></span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Estimated versus true donor weights for donors with non-trivial weight."</span></span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a>w <span class="op">=</span> pd.DataFrame({<span class="st">"estimated"</span>: sc.weights, <span class="st">"true"</span>: true_weights})</span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a>w[(w.estimated <span class="op">&gt;</span> <span class="fl">0.01</span>) <span class="op">|</span> (w.true <span class="op">&gt;</span> <span class="dv">0</span>)].sort_values(<span class="st">"estimated"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-90"><a href="#cb7-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-91"><a href="#cb7-91" aria-hidden="true" tabindex="-1"></a>SC concentrates weight on a handful of donors. It need not recover the *generating* weights exactly — with few latent factors, many donor combinations reproduce the same path — and that's fine: the target is the counterfactual trajectory, not the weights themselves. In @fig-sc-fit, DiD's gap drifts during the *pre*-period — a red flag that its counterfactual doesn't share the treated market's trend.</span>
+<span id="cb7-92"><a href="#cb7-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-93"><a href="#cb7-93" aria-hidden="true" tabindex="-1"></a><span class="fu">## Model selection: in-sample and out-of-sample fit</span></span>
+<span id="cb7-94"><a href="#cb7-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-95"><a href="#cb7-95" aria-hidden="true" tabindex="-1"></a>In-sample pre-period RMSPE always favours the more flexible method, so on its own it's not a fair comparison. The **backtest** holds out the last *h* pre-treatment periods, fits on the rest, and scores the "forecast" on the held-out window where the true effect is zero. Pick the method with the lower out-of-sample error — the same logic as cross-validation, respecting time order.</span>
+<span id="cb7-96"><a href="#cb7-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-99"><a href="#cb7-99" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-100"><a href="#cb7-100" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-sc-selection</span></span>
+<span id="cb7-101"><a href="#cb7-101" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "In-sample and backtest error for each method, with the ATT estimate and the truth."</span></span>
+<span id="cb7-102"><a href="#cb7-102" aria-hidden="true" tabindex="-1"></a>rows <span class="op">=</span> []</span>
+<span id="cb7-103"><a href="#cb7-103" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, method <span class="kw">in</span> {<span class="st">"synthetic_control"</span>: synth.synthetic_control, <span class="st">"did"</span>: synth.did_counterfactual}.items():</span>
+<span id="cb7-104"><a href="#cb7-104" aria-hidden="true" tabindex="-1"></a>    res <span class="op">=</span> method(wide, TREATED, TREAT_TIME)</span>
+<span id="cb7-105"><a href="#cb7-105" aria-hidden="true" tabindex="-1"></a>    row <span class="op">=</span> {<span class="st">"method"</span>: name, <span class="st">"pre_rmspe (in-sample)"</span>: res.pre_rmspe}</span>
+<span id="cb7-106"><a href="#cb7-106" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> h <span class="kw">in</span> (<span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">8</span>):</span>
+<span id="cb7-107"><a href="#cb7-107" aria-hidden="true" tabindex="-1"></a>        row[<span class="ss">f"backtest_rmspe h=</span><span class="sc">{</span>h<span class="sc">}</span><span class="ss">"</span>] <span class="op">=</span> synth.backtest(wide, TREATED, TREAT_TIME, h, method)</span>
+<span id="cb7-108"><a href="#cb7-108" aria-hidden="true" tabindex="-1"></a>    row[<span class="st">"ATT estimate"</span>] <span class="op">=</span> res.att</span>
+<span id="cb7-109"><a href="#cb7-109" aria-hidden="true" tabindex="-1"></a>    rows.append(row)</span>
+<span id="cb7-110"><a href="#cb7-110" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(rows).set_index(<span class="st">"method"</span>).assign(true_ATT<span class="op">=</span>TRUE_EFFECT)</span>
+<span id="cb7-111"><a href="#cb7-111" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-112"><a href="#cb7-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-113"><a href="#cb7-113" aria-hidden="true" tabindex="-1"></a><span class="fu">## Inference: placebo-in-space</span></span>
+<span id="cb7-114"><a href="#cb7-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-115"><a href="#cb7-115" aria-hidden="true" tabindex="-1"></a>With one treated unit, conventional standard errors don't apply. Instead, pretend each donor was treated, re-run SC, and ask: *is the treated market's post/pre RMSPE ratio extreme relative to the placebos?* The permutation p-value is its rank. Using the **ratio** (not the raw post gap) penalises placebos that fit poorly pre-treatment.</span>
+<span id="cb7-116"><a href="#cb7-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-119"><a href="#cb7-119" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-120"><a href="#cb7-120" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-sc-placebo</span></span>
+<span id="cb7-121"><a href="#cb7-121" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "Placebo-in-space inference: gap paths for the treated market and placebo donors (left) and the ranked post/pre RMSPE ratios (right)."</span></span>
+<span id="cb7-122"><a href="#cb7-122" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Left: grey placebo gap lines near zero and one red treated line far below zero after treatment. Right: horizontal bars of RMSPE ratios with the treated market's bar the longest."</span></span>
+<span id="cb7-123"><a href="#cb7-123" aria-hidden="true" tabindex="-1"></a>placebos <span class="op">=</span> synth.placebo_in_space(wide, TREATED, TREAT_TIME, method<span class="op">=</span>synth.synthetic_control)</span>
+<span id="cb7-124"><a href="#cb7-124" aria-hidden="true" tabindex="-1"></a>p_val <span class="op">=</span> synth.permutation_pvalue(placebos, TREATED)</span>
+<span id="cb7-125"><a href="#cb7-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-126"><a href="#cb7-126" aria-hidden="true" tabindex="-1"></a><span class="co"># Common practice: hide placebos with very poor pre-fit when plotting (here &gt; 5x the treated pre-RMSPE).</span></span>
+<span id="cb7-127"><a href="#cb7-127" aria-hidden="true" tabindex="-1"></a>good_fit <span class="op">=</span> placebos[placebos.pre_rmspe <span class="op">&lt;=</span> <span class="dv">5</span> <span class="op">*</span> placebos.loc[TREATED, <span class="st">"pre_rmspe"</span>]]</span>
+<span id="cb7-128"><a href="#cb7-128" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-129"><a href="#cb7-129" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="cb7-130"><a href="#cb7-130" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> u, row <span class="kw">in</span> good_fit.iterrows():</span>
+<span id="cb7-131"><a href="#cb7-131" aria-hidden="true" tabindex="-1"></a>    axes[<span class="dv">0</span>].plot(row.gap, c<span class="op">=</span><span class="st">"C3"</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="st">"lightgrey"</span>, lw<span class="op">=</span><span class="fl">2.5</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="fl">0.8</span>)</span>
+<span id="cb7-132"><a href="#cb7-132" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].axvline(TREAT_TIME <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"k"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb7-133"><a href="#cb7-133" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Gaps: treated (red) vs placebo donors"</span>, xlabel<span class="op">=</span><span class="st">"period"</span>)</span>
+<span id="cb7-134"><a href="#cb7-134" aria-hidden="true" tabindex="-1"></a>ratios <span class="op">=</span> placebos[<span class="st">"ratio"</span>].sort_values()</span>
+<span id="cb7-135"><a href="#cb7-135" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].barh(<span class="bu">range</span>(<span class="bu">len</span>(ratios)), ratios, color<span class="op">=</span>[<span class="st">"C3"</span> <span class="cf">if</span> u <span class="op">==</span> TREATED <span class="cf">else</span> <span class="st">"grey"</span> <span class="cf">for</span> u <span class="kw">in</span> ratios.index])</span>
+<span id="cb7-136"><a href="#cb7-136" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="ss">f"post/pre RMSPE ratio — permutation p = </span><span class="sc">{</span>p_val<span class="sc">:.3f}</span><span class="ss">"</span>, yticks<span class="op">=</span>[])</span>
+<span id="cb7-137"><a href="#cb7-137" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb7-138"><a href="#cb7-138" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-139"><a href="#cb7-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-140"><a href="#cb7-140" aria-hidden="true" tabindex="-1"></a>With 30 donors the smallest attainable p-value is 1/31 ≈ 0.032: placebo inference needs a reasonably large donor pool.</span>
+<span id="cb7-141"><a href="#cb7-141" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-142"><a href="#cb7-142" aria-hidden="true" tabindex="-1"></a><span class="fu">## Robustness: leave one donor out</span></span>
+<span id="cb7-143"><a href="#cb7-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-144"><a href="#cb7-144" aria-hidden="true" tabindex="-1"></a>If the result hinges on a single donor (which might have had its own shock), it's fragile. Drop each donor with positive weight and refit.</span>
+<span id="cb7-145"><a href="#cb7-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-148"><a href="#cb7-148" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-149"><a href="#cb7-149" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-sc-loo</span></span>
+<span id="cb7-150"><a href="#cb7-150" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Leave-one-donor-out refits for each donor with positive weight."</span></span>
+<span id="cb7-151"><a href="#cb7-151" aria-hidden="true" tabindex="-1"></a>loo <span class="op">=</span> []</span>
+<span id="cb7-152"><a href="#cb7-152" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> donor <span class="kw">in</span> sc.weights[sc.weights <span class="op">&gt;</span> <span class="fl">0.01</span>].index:</span>
+<span id="cb7-153"><a href="#cb7-153" aria-hidden="true" tabindex="-1"></a>    r <span class="op">=</span> synth.synthetic_control(wide.drop(columns<span class="op">=</span>donor), TREATED, TREAT_TIME)</span>
+<span id="cb7-154"><a href="#cb7-154" aria-hidden="true" tabindex="-1"></a>    loo.append({<span class="st">"dropped"</span>: donor, <span class="st">"weight_in_full_fit"</span>: sc.weights[donor], <span class="st">"ATT"</span>: r.att, <span class="st">"pre_rmspe"</span>: r.pre_rmspe})</span>
+<span id="cb7-155"><a href="#cb7-155" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(loo).assign(full_ATT<span class="op">=</span>sc.att)</span>
+<span id="cb7-156"><a href="#cb7-156" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-157"><a href="#cb7-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-158"><a href="#cb7-158" aria-hidden="true" tabindex="-1"></a>In @tbl-sc-loo, dropping most donors barely moves the estimate, but dropping the top-weighted donor roughly halves it *and* doubles the pre-period RMSPE — the remaining pool can't reproduce the treated market as well. That's the kind of dependence to report and investigate (is that donor genuinely the best comparison, or did it have its own shock?), and a natural case for augmented SC, which corrects for imperfect pre-fit.</span>
+<span id="cb7-159"><a href="#cb7-159" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-160"><a href="#cb7-160" aria-hidden="true" tabindex="-1"></a><span class="fu">## DiD vs synthetic control: decision guide</span></span>
+<span id="cb7-161"><a href="#cb7-161" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-162"><a href="#cb7-162" aria-hidden="true" tabindex="-1"></a>::: {#tbl-sc-vs-did}</span>
+<span id="cb7-163"><a href="#cb7-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-164"><a href="#cb7-164" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="pp">|</span> DiD <span class="pp">|</span> Synthetic control <span class="pp">|</span></span>
+<span id="cb7-165"><a href="#cb7-165" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb7-166"><a href="#cb7-166" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Treated units <span class="pp">|</span> Many <span class="pp">|</span> One / few aggregates <span class="pp">|</span></span>
+<span id="cb7-167"><a href="#cb7-167" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Comparison <span class="pp">|</span> Equal-weight (or regression) average of controls <span class="pp">|</span> Data-driven convex weights <span class="pp">|</span></span>
+<span id="cb7-168"><a href="#cb7-168" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Key assumption <span class="pp">|</span> Parallel trends with the average control <span class="pp">|</span> Treated unit lies in the convex hull of donors; donor combination keeps tracking it <span class="pp">|</span></span>
+<span id="cb7-169"><a href="#cb7-169" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Needs <span class="pp">|</span> A control group with similar trends <span class="pp">|</span> Long pre-period; donors not hit by the treatment or spillovers <span class="pp">|</span></span>
+<span id="cb7-170"><a href="#cb7-170" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Inference <span class="pp">|</span> Clustered SEs <span class="pp">|</span> Placebo permutations / conformal <span class="pp">|</span></span>
+<span id="cb7-171"><a href="#cb7-171" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Fails when <span class="pp">|</span> Trends diverge <span class="pp">|</span> Treated unit is extreme (outside donor hull) — weights can't reach it <span class="pp">|</span></span>
+<span id="cb7-172"><a href="#cb7-172" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-173"><a href="#cb7-173" aria-hidden="true" tabindex="-1"></a>Difference-in-differences versus synthetic control.</span>
+<span id="cb7-174"><a href="#cb7-174" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-175"><a href="#cb7-175" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-176"><a href="#cb7-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-177"><a href="#cb7-177" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Workflow"}</span>
+<span id="cb7-178"><a href="#cb7-178" aria-hidden="true" tabindex="-1"></a>(1) plot pre-trends; (2) fit both; (3) compare *backtest* error; (4) if they agree, report both — agreement is reassuring; if they disagree, the backtest tells you which counterfactual to trust; (5) placebo inference + leave-one-out.</span>
+<span id="cb7-179"><a href="#cb7-179" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-180"><a href="#cb7-180" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-181"><a href="#cb7-181" aria-hidden="true" tabindex="-1"></a>::: {.callout-note title="Hybrids that bridge the two"}</span>
+<span id="cb7-182"><a href="#cb7-182" aria-hidden="true" tabindex="-1"></a>*Synthetic DiD* [@arkhangelsky2021] adds unit + time weights to DiD; *Augmented SC* <span class="co">[</span><span class="ot">@benmichael2021</span><span class="co">]</span> bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: <span class="in">`pysyncon`</span> (SC, augmented SC, placebo tests), <span class="in">`SparseSC`</span>, <span class="in">`synthdid`</span> ports; Google's <span class="in">`CausalImpact`</span> / <span class="in">`tfcausalimpact`</span> is a Bayesian structural-time-series cousin.</span>
+<span id="cb7-183"><a href="#cb7-183" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-184"><a href="#cb7-184" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-185"><a href="#cb7-185" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning title="Practical gotchas"}</span>
+<span id="cb7-186"><a href="#cb7-186" aria-hidden="true" tabindex="-1"></a>exclude donors that could receive spillovers (neighbouring markets) or had their own interventions; match on outcome levels *and* key predictors when the pre-period is short; standardize if outcomes have very different scales across donors.</span>
+<span id="cb7-187"><a href="#cb7-187" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-188"><a href="#cb7-188" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-189"><a href="#cb7-189" aria-hidden="true" tabindex="-1"></a><span class="ot">[^rmspe]: </span>RMSPE: root mean squared prediction error, the gap between the treated unit and its counterfactual over a window of periods.</span>
+<span id="cb7-190"><a href="#cb7-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-191"><a href="#cb7-191" aria-hidden="true" tabindex="-1"></a><span class="fu">## Check your understanding</span></span>
+<span id="cb7-192"><a href="#cb7-192" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-193"><a href="#cb7-193" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Why isn't in-sample pre-period fit enough to choose between SC and DiD?" collapse="true"}</span>
+<span id="cb7-194"><a href="#cb7-194" aria-hidden="true" tabindex="-1"></a>The more flexible method always fits the pre-period better, because its weights are chosen to do exactly that. The backtest holds out the last pre-treatment periods and scores the forecast where the true effect is zero.</span>
+<span id="cb7-195"><a href="#cb7-195" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-196"><a href="#cb7-196" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-197"><a href="#cb7-197" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Why can't the placebo p-value go below about 0.03 with 30 donors?" collapse="true"}</span>
+<span id="cb7-198"><a href="#cb7-198" aria-hidden="true" tabindex="-1"></a>The treated unit is ranked among 31 units (itself plus 30 placebos), so its smallest possible p-value is 1/31 ≈ 0.032.</span>
+<span id="cb7-199"><a href="#cb7-199" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-200"><a href="#cb7-200" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-201"><a href="#cb7-201" aria-hidden="true" tabindex="-1"></a>::: {.callout-important title="Try it"}</span>
+<span id="cb7-202"><a href="#cb7-202" aria-hidden="true" tabindex="-1"></a>Set <span class="in">`TRUE_EFFECT = 0.0`</span> in the data cell and re-render. Does the placebo p-value stay small, and what happens to the backtest comparison?</span>
+<span id="cb7-203"><a href="#cb7-203" aria-hidden="true" tabindex="-1"></a>:::</span>
+</code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
+
+
+
+
+</body></html>

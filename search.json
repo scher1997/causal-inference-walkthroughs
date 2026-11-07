@@ -1,0 +1,470 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Causal Inference by Simulation",
+    "section": "",
+    "text": "Preface\nSix worked examples of causal-inference methods, each built on simulated data with a known true effect. That lets you check whether a method recovers the truth, and see how each assumption failure biases the answer.\nThe estimators live in a small, tested package, causalsimkit (see Appendix A — The causalsimkit package), rather than in the chapters, so they are reusable and the chapters stay readable. Each chapter ends with practical notes and pointers to production libraries.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#the-six-chapters",
+    "href": "index.html#the-six-chapters",
+    "title": "Causal Inference by Simulation",
+    "section": "The six chapters",
+    "text": "The six chapters\n\n\n\nTable 1: The six worked examples.\n\n\n\n\n\n\n\n\n\n\nChapter\nMethod\nKey diagnostics shown\n\n\n\n\n1  Difference-in-Differences (DiD)\n2×2 DiD, TWFE, event-study leads/lags\nPre-trend plot, joint F-test on leads, placebo dates, violated-PT demo\n\n\n2  Synthetic Control, and Choosing Between SC and DiD\nSynthetic control vs DiD counterfactual\nPre-fit RMSPE, backtest-based model selection, placebo-in-space p-value, leave-one-donor-out\n\n\n3  Event Studies\n(A) market-model abnormal returns / CAR; (B) staggered rollout KPIs\nAAR/CAAR with CIs, pre-event placebo window; TWFE bias vs Callaway–Sant’Anna\n\n\n4  Regression Discontinuity Design (RDD)\nSharp RD, local polynomial\nRD plot, bandwidth/kernel/order sensitivity, density (manipulation) test, covariate continuity, placebo cutoffs\n\n\n5  Propensity-Score Methods\nIPW, matching, AIPW, cross-fit AIPW (DML)\nOverlap plot, love plot (SMD), ATE vs ATT, double-robustness demo\n\n\n6  Geo Experiments and Switchback Testing\nInterference demo, matched-pair geo test (TBR), switchback\nA/A power/MDE backtest, randomization inference, carryover burn-in, block-length trade-off",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#choosing-a-method",
+    "href": "index.html#choosing-a-method",
+    "title": "Causal Inference by Simulation",
+    "section": "Choosing a method",
+    "text": "Choosing a method\n\nMany treated units, clean comparison group with similar pre-trends → DiD (1  Difference-in-Differences (DiD)). Staggered timing → heterogeneity-robust event study (3  Event Studies, Part B).\nOne or a few treated aggregates (a market, a region) → synthetic control (2  Synthetic Control, and Choosing Between SC and DiD); choose vs DiD by backtest error.\nTreatment set by a cutoff on a score → RDD (4  Regression Discontinuity Design (RDD)).\nSelf-selected treatment, rich pre-treatment covariates → propensity / doubly robust methods (5  Propensity-Score Methods) + sensitivity analysis.\nYou control assignment but users interfere → randomize geos or time blocks (6  Geo Experiments and Switchback Testing).\nMarket reaction to news → financial event study (3  Event Studies, Part A).",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#suggested-reading-order",
+    "href": "index.html#suggested-reading-order",
+    "title": "Causal Inference by Simulation",
+    "section": "Suggested reading order",
+    "text": "Suggested reading order\nThe chapters are numbered in the order the notebooks were written, but this order builds the ideas more naturally:\n\n1  Difference-in-Differences (DiD), the baseline the others push against.\n4  Regression Discontinuity Design (RDD), for clean identification.\n5  Propensity-Score Methods, for selection on observables.\n2  Synthetic Control, and Choosing Between SC and DiD, which builds on the DiD comparison.\n3  Event Studies, which extend DiD to staggered timing.\n6  Geo Experiments and Switchback Testing, which violate the no-interference assumption the others take for granted.\n\n\n\n\n\n\n\nTipReading and review aids (HTML)\n\n\n\n\nCode is folded by default; use Code at the top of a page to show all of it.\nHover over the numbers on annotated code lines for a note on what they do.\nHover over a citation or footnote to preview it, and click a figure to enlarge it.\nEach chapter opens with a walkthrough summary and closes with Check your understanding: click a question to reveal the answer, then try the Try it exercise.\nEquations, figures, tables and chapters are numbered and cross-linked.\n\n\n\n\n\n\n\n\n\nNoteChanging the output format\n\n\n\nThis is a Quarto book. The format: block in _quarto.yml controls the output: HTML is active, and PDF, Word and EPUB are one uncommented line away. Run uv run quarto render for every active format, or uv run quarto render --to docx for one.\n\n\n\n\n\n\n\n\nWarningScope\n\n\n\ncausalsimkit is intentionally transparent and dependency-light, for learning and for prototyping. Before shipping a decision, cross-check against the mature libraries in the production extra (for example rdrobust for bias-corrected RD inference, pyfixest or csdid for staggered DiD, pysyncon for augmented SC, DoWhy or EconML for observational work, GeoLift or matched_markets for geo tests).",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html",
+    "href": "01_difference_in_differences.html",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "",
+    "text": "1.1 Pre-trend plot\nQuestion: what did an intervention do to the treated group, relative to what would have happened without it?\nDiD estimates the ATT1 by comparing the change in the treated group to the change in an untreated comparison group:\n\\[\\widehat{ATT} = (\\bar Y_{T,post} - \\bar Y_{T,pre}) - (\\bar Y_{C,post} - \\bar Y_{C,pre}) \\tag{1.1}\\]\nPlot the average outcome per group per period. Under parallel trends the lines are vertically offset but move together before the dashed line. In the right panel of Figure 1.1, the treated group is drifting away before treatment — any DiD estimate there will absorb that drift.\nCode\ndef plot_group_means(df, ax, title):\n    means = df.groupby([\"period\", \"treated\"])[\"y\"].mean().unstack()\n    ax.plot(means.index, means[1], \"o-\", label=\"treated\")\n    ax.plot(means.index, means[0], \"s-\", label=\"control\")\n    ax.axvline(TREAT_PERIOD - 0.5, ls=\"--\", c=\"grey\")\n    ax.set(title=title, xlabel=\"period\", ylabel=\"mean outcome\")\n    ax.legend()\n\nfig, axes = plt.subplots(1, 2, figsize=(12, 4), sharey=True)\nplot_group_means(good, axes[0], \"Parallel trends hold\")\nplot_group_means(bad, axes[1], \"Parallel trends violated (treated pre-trend)\")\nplt.show()\n\n\n\n\n\n\n\n\nFigure 1.1: Raw group means when parallel trends hold (left) and when the treated group has a pre-trend (right). The dashed line marks the start of treatment.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html#did-and-twfe",
+    "href": "01_difference_in_differences.html#did-and-twfe",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "1.2 2×2 DiD and TWFE",
+    "text": "1.2 2×2 DiD and TWFE\nThe canonical regression is y ~ treated + post + treated:post. The interaction is the DiD estimate (Equation 1.1). TWFE replaces the group and period dummies with unit and period fixed effects — identical in a balanced block-adoption design, but it also absorbs unit-level heterogeneity and lets you add time-varying covariates.\n\n\n\n\n\n\nImportantCluster your standard errors\n\n\n\nAlways cluster standard errors at the unit level (the level at which treatment is assigned): outcomes within a unit are serially correlated, and ignoring that makes CIs far too narrow (Bertrand et al. 2004).\n\n\n\nBertrand, Marianne, Esther Duflo, and Sendhil Mullainathan. 2004. “How Much Should We Trust Differences-in-Differences Estimates?” Quarterly Journal of Economics.\n\n\nCode\n1r_2x2 = did.did_2x2(good, \"y\", \"treated\", \"post\", cluster=\"unit\")\n2r_twfe = did.twfe_did(good, \"y\", \"unit\", \"period\", \"D\")\n\npd.concat([\n    r_2x2.summary([\"treated:post\"]).rename(index={\"treated:post\": \"2x2 DiD\"}),\n    r_twfe.summary([\"D\"]).rename(index={\"D\": \"TWFE\"}),\n]).assign(truth=TRUE_EFFECT)\n\n\n\n1\n\nThe canonical 2×2 regression y ~ treated + post + treated:post. The treated:post coefficient is the DiD estimate (Equation 1.1), with standard errors clustered by unit.\n\n2\n\nTwo-way fixed effects: unit and period fixed effects plus the treatment indicator D. It matches the 2×2 estimate here because every treated unit starts in the same period.\n\n\n\n\n\n\nTable 1.1: 2×2 DiD and TWFE estimates against the true effect of 2.0.\n\n\n\n\n\n\n\n\n\n\ncoef\nse\nt\np\nci_lower\nci_upper\ntruth\n\n\n\n\n2x2 DiD\n2.148\n0.157\n13.705\n1.707e-16\n1.831\n2.465\n2.0\n\n\nTWFE\n2.148\n0.163\n13.214\n5.535e-16\n1.820\n2.477\n2.0",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html#event-study-leads-and-lags",
+    "href": "01_difference_in_differences.html#event-study-leads-and-lags",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "1.3 Event study: leads and lags",
+    "text": "1.3 Event study: leads and lags\nInstead of one post dummy, estimate one coefficient per period relative to treatment (period −1 is the omitted reference), as in Equation 1.2:\n\\[y_{it} = \\alpha_i + \\gamma_t + \\sum_{k \\neq -1} \\beta_k \\, \\mathbb{1}[t - T_0 = k] \\cdot \\text{treated}_i + \\varepsilon_{it} \\tag{1.2}\\]\n\nLeads (\\(k&lt;0\\)) should be ≈ 0. They are a direct visual + statistical check of pre-trends.\nLags (\\(k \\ge 0\\)) trace out the dynamic effect: does it appear immediately, build up, or fade?\n\nThe joint F-test on the leads summarises the pre-trend check in one number.\n\n\nCode\ndef add_rel_time(df):\n    return df.assign(rel_time=np.where(df.treated == 1, df.period - TREAT_PERIOD, np.nan))\n\nfig, axes = plt.subplots(1, 2, figsize=(12, 4), sharey=True)\nfor ax, (name, df) in zip(axes, {\"Parallel trends hold\": good, \"Violated\": bad}.items()):\n    tab, res = did.event_study(add_rel_time(df), \"y\", \"unit\", \"period\", \"rel_time\", window=(-8, 7))\n    wald = res.wald_test(did.lead_names(tab))\n    ax.errorbar(tab.rel_time, tab.coef, yerr=1.96 * tab.se, fmt=\"o\", capsize=3)\n    ax.axhline(0, c=\"k\", lw=0.8); ax.axhline(TRUE_EFFECT, c=\"green\", ls=\":\", label=\"true effect\")\n    ax.axvline(-0.5, ls=\"--\", c=\"grey\")\n    ax.set(title=f\"{name}\\npre-trend F-test p = {wald['p']:.3f}\", xlabel=\"periods relative to treatment\")\n    ax.legend()\naxes[0].set_ylabel(\"coefficient (95% CI)\")\nplt.show()\n\n\n\n\n\n\n\n\nFigure 1.2: Event-study coefficients with 95% confidence intervals. Under parallel trends (left) the leads sit near zero and the lags near the true effect of 2.0; with a violated pre-trend (right) the leads slope upward.\n\n\n\n\n\nIn Figure 1.2, on the left the leads hover around zero and the lags sit on the true effect. On the right the leads slope upward and the F-test rejects — exactly the warning you want before trusting the post-period coefficients, which are now inflated by the continuing trend.\n\n\nCode\nr_bad = did.twfe_did(bad, \"y\", \"unit\", \"period\", \"D\")\nprint(f\"TWFE estimate with violated parallel trends: {r_bad.params['D']:.2f} \"\n      f\"(95% CI {r_bad.conf_int().loc['D', 'lower']:.2f} to {r_bad.conf_int().loc['D', 'upper']:.2f}); truth = {TRUE_EFFECT}\")\n\n\nTWFE estimate with violated parallel trends: 4.65 (95% CI 4.32 to 4.98); truth = 2.0",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html#placebo-test-fake-treatment-date",
+    "href": "01_difference_in_differences.html#placebo-test-fake-treatment-date",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "1.4 Placebo test: fake treatment date",
+    "text": "1.4 Placebo test: fake treatment date\nDrop the real post-period, pretend treatment happened earlier, and re-estimate. A “significant effect” where none can exist means the design is picking up something other than the treatment.\n\n\nCode\ndef placebo(df, fake_start):\n    pre = df[df.period &lt; TREAT_PERIOD].assign(D=lambda d: d.treated * (d.period &gt;= fake_start))\n    r = did.twfe_did(pre, \"y\", \"unit\", \"period\", \"D\")\n    return {\"fake_start\": fake_start, \"estimate\": r.params[\"D\"], \"p\": r.pvalues[\"D\"]}\n\npd.DataFrame([placebo(good, s) | {\"data\": \"parallel\"} for s in (6, 8)]\n             + [placebo(bad, s) | {\"data\": \"violated\"} for s in (6, 8)])\n\n\n\n\nTable 1.2: Placebo-date estimates using pre-period data only. Any significant effect here is spurious.\n\n\n\n\n\n\n\n\n\n\nfake_start\nestimate\np\ndata\n\n\n\n\n0\n6\n-0.119\n5.387e-01\nparallel\n\n\n1\n8\n-0.056\n8.043e-01\nparallel\n\n\n2\n6\n1.381\n1.169e-08\nviolated\n\n\n3\n8\n1.444\n1.355e-07\nviolated",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html#practical-checklist",
+    "href": "01_difference_in_differences.html#practical-checklist",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "1.5 Practical checklist",
+    "text": "1.5 Practical checklist\n\n\n\nTable 1.3: Practical DiD checklist.\n\n\n\n\n\n\n\n\n\nCheck\nWhy\n\n\n\n\nRaw pre-trend plot\nCatches most problems before any regression.\n\n\nEvent-study leads ≈ 0 + joint F-test\nFormalises the visual check.\n\n\nPlacebo dates / placebo outcomes\nGuards against coincident shocks.\n\n\nCluster SEs at the treatment-assignment level\nSerial correlation inflates false positives. With &lt; ~30 clusters, use a wild cluster bootstrap.\n\n\nNo anticipation\nIf units react before \\(T_0\\) (announcements), move the reference period earlier.\n\n\nStable composition\nUnits entering/leaving the panel because of treatment breaks the comparison.\n\n\n\n\n\n\n\n\n\n\n\n\nWarningCaveats worth knowing\n\n\n\n\nPassing a pre-trend test is not proof. Pre-tests have low power, and conditioning on passing them distorts inference (Roth 2022). Report sensitivity bounds — e.g. HonestDiD (Rambachan and Roth 2023): “how large a post-period trend deviation would overturn the result?”\nStaggered adoption (units treated at different times) breaks TWFE when effects vary over time or across cohorts. See Chapter 3.\nParallel trends is scale-dependent: if it holds in levels it generally won’t hold in logs. Choose the scale up front for substantive reasons.\nWhen no comparison group tracks the treated unit, consider synthetic control (Chapter 2).\n\n\n\n\nRambachan, Ashesh, and Jonathan Roth. 2023. “A More Credible Approach to Parallel Trends.” Review of Economic Studies.\n\n\n\n\n\n\nNoteProduction tools\n\n\n\npyfixest (fast high-dimensional FE, clustered/wild-bootstrap SEs, event studies), linearmodels.PanelOLS, statsmodels (smf.ols(...).fit(cov_type=\"cluster\", ...)).",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "01_difference_in_differences.html#check-your-understanding",
+    "href": "01_difference_in_differences.html#check-your-understanding",
+    "title": "1  Difference-in-Differences (DiD)",
+    "section": "1.6 Check your understanding",
+    "text": "1.6 Check your understanding\n\n\n\n\n\n\nTipWhy can’t parallel trends be tested after treatment, and what do we check instead?\n\n\n\n\n\nAfter treatment we never observe the treated group’s untreated outcomes, so the assumption is untestable there. We check the pre-period: the raw trend plot, event-study leads near zero with a joint F-test, and placebo dates. Passing is evidence, not proof, because pre-tests have low power (Roth 2022).\n\n\n\n\nRoth, Jonathan. 2022. “Pretest with Caution: Event-Study Estimates After Testing for Parallel Trends.” American Economic Review: Insights.\n\n\n\n\n\n\nTipWhy is the TWFE estimate above 2.0 when the pre-trend is violated?\n\n\n\n\n\nThe treated group was already drifting upward before treatment. DiD attributes the continuing drift to the treatment, so the post-period estimate is inflated.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nIn the first code cell change pretrend=0.25 to a smaller value such as 0.05 and re-render. At what drift does the lead F-test stop rejecting, and how biased is the TWFE estimate then?",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Difference-in-Differences (DiD)</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html",
+    "href": "02_synthetic_control.html",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "",
+    "text": "2.1 Fit both counterfactuals\nSetting: one (or a few) treated aggregate units — a city, a region, a market — and a donor pool of untreated units. Example: a pricing change launched only in one geographic market.\nDiD would compare the treated market to the equal-weighted average of the donors. That only works if the average happens to share the treated market’s trend. Synthetic control instead learns weights so the weighted donor combination reproduces the treated market’s pre-period path (Equation 2.1):\n\\[\\hat w = \\arg\\min_{w} \\sum_{t &lt; T_0} \\Big(y_{1t} - \\sum_j w_j y_{jt}\\Big)^2 \\quad \\text{s.t. } w_j \\ge 0,\\ \\sum_j w_j = 1 \\tag{2.1}\\]\nThe non-negativity and sum-to-one constraints keep the counterfactual an interpolation of real markets (no extrapolation) and typically make it sparse and interpretable.\nCode\n1sc = synth.synthetic_control(wide, TREATED, TREAT_TIME)\n2dd = synth.did_counterfactual(wide, TREATED, TREAT_TIME)\n\nfig, axes = plt.subplots(1, 2, figsize=(13, 4))\nfor res, c in ((sc, \"C0\"), (dd, \"C1\")):\n    axes[0].plot(res.counterfactual, c=c, ls=\"--\", label=f\"{res.method} counterfactual\")\n    axes[1].plot(res.gap, c=c, label=res.method)\naxes[0].plot(wide[TREATED], c=\"C3\", lw=2, label=\"actual\")\naxes[1].axhline(TRUE_EFFECT, c=\"green\", ls=\":\", label=\"true effect\")\naxes[1].axhline(0, c=\"k\", lw=0.8)\nfor ax, t in zip(axes, (\"Actual vs counterfactual\", \"Gap = actual − counterfactual\")):\n    ax.axvline(TREAT_TIME - 0.5, ls=\"--\", c=\"grey\"); ax.set(title=t, xlabel=\"period\"); ax.legend()\nplt.show()\n\n\n\n1\n\nLearns non-negative donor weights that sum to one and best reproduce the treated market’s pre-period path (Equation 2.1).\n\n2\n\nThe DiD counterfactual: the equal-weight donor average, shifted to match the treated market’s pre-period mean.\n\n\n\n\n\n\n\n\n\n\nFigure 2.2: Counterfactuals (left) and gaps (right) for synthetic control and DiD, against the true effect of -3.0.\nCode\nw = pd.DataFrame({\"estimated\": sc.weights, \"true\": true_weights})\nw[(w.estimated &gt; 0.01) | (w.true &gt; 0)].sort_values(\"estimated\", ascending=False)\n\n\n\n\nTable 2.1: Estimated versus true donor weights for donors with non-trivial weight.\n\n\n\n\n\n\n\n\n\n\nestimated\ntrue\n\n\n\n\nmarket_19\n0.516\n0.5\n\n\nmarket_08\n0.252\n0.2\n\n\nmarket_03\n0.147\n0.0\n\n\nmarket_24\n0.045\n0.0\n\n\nmarket_14\n0.041\n0.3\nSC concentrates weight on a handful of donors. It need not recover the generating weights exactly — with few latent factors, many donor combinations reproduce the same path — and that’s fine: the target is the counterfactual trajectory, not the weights themselves. In Figure 2.2, DiD’s gap drifts during the pre-period — a red flag that its counterfactual doesn’t share the treated market’s trend.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html#model-selection-in-sample-and-out-of-sample-fit",
+    "href": "02_synthetic_control.html#model-selection-in-sample-and-out-of-sample-fit",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "2.2 Model selection: in-sample and out-of-sample fit",
+    "text": "2.2 Model selection: in-sample and out-of-sample fit\nIn-sample pre-period RMSPE always favours the more flexible method, so on its own it’s not a fair comparison. The backtest holds out the last h pre-treatment periods, fits on the rest, and scores the “forecast” on the held-out window where the true effect is zero. Pick the method with the lower out-of-sample error — the same logic as cross-validation, respecting time order.\n\n\nCode\nrows = []\nfor name, method in {\"synthetic_control\": synth.synthetic_control, \"did\": synth.did_counterfactual}.items():\n    res = method(wide, TREATED, TREAT_TIME)\n    row = {\"method\": name, \"pre_rmspe (in-sample)\": res.pre_rmspe}\n    for h in (4, 6, 8):\n        row[f\"backtest_rmspe h={h}\"] = synth.backtest(wide, TREATED, TREAT_TIME, h, method)\n    row[\"ATT estimate\"] = res.att\n    rows.append(row)\npd.DataFrame(rows).set_index(\"method\").assign(true_ATT=TRUE_EFFECT)\n\n\n\n\nTable 2.2: In-sample and backtest error for each method, with the ATT estimate and the truth.\n\n\n\n\n\n\n\n\n\n\npre_rmspe (in-sample)\nbacktest_rmspe h=4\nbacktest_rmspe h=6\nbacktest_rmspe h=8\nATT estimate\ntrue_ATT\n\n\nmethod\n\n\n\n\n\n\n\n\n\n\nsynthetic_control\n0.453\n0.318\n0.385\n0.396\n-2.962\n-3.0\n\n\ndid\n2.467\n4.178\n4.275\n4.281\n2.389\n-3.0",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html#inference-placebo-in-space",
+    "href": "02_synthetic_control.html#inference-placebo-in-space",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "2.3 Inference: placebo-in-space",
+    "text": "2.3 Inference: placebo-in-space\nWith one treated unit, conventional standard errors don’t apply. Instead, pretend each donor was treated, re-run SC, and ask: is the treated market’s post/pre RMSPE ratio extreme relative to the placebos? The permutation p-value is its rank. Using the ratio (not the raw post gap) penalises placebos that fit poorly pre-treatment.\n\n\nCode\nplacebos = synth.placebo_in_space(wide, TREATED, TREAT_TIME, method=synth.synthetic_control)\np_val = synth.permutation_pvalue(placebos, TREATED)\n\n# Common practice: hide placebos with very poor pre-fit when plotting (here &gt; 5x the treated pre-RMSPE).\ngood_fit = placebos[placebos.pre_rmspe &lt;= 5 * placebos.loc[TREATED, \"pre_rmspe\"]]\n\nfig, axes = plt.subplots(1, 2, figsize=(13, 4))\nfor u, row in good_fit.iterrows():\n    axes[0].plot(row.gap, c=\"C3\" if u == TREATED else \"lightgrey\", lw=2.5 if u == TREATED else 0.8)\naxes[0].axvline(TREAT_TIME - 0.5, ls=\"--\", c=\"k\"); axes[0].axhline(0, c=\"k\", lw=0.8)\naxes[0].set(title=\"Gaps: treated (red) vs placebo donors\", xlabel=\"period\")\nratios = placebos[\"ratio\"].sort_values()\naxes[1].barh(range(len(ratios)), ratios, color=[\"C3\" if u == TREATED else \"grey\" for u in ratios.index])\naxes[1].set(title=f\"post/pre RMSPE ratio — permutation p = {p_val:.3f}\", yticks=[])\nplt.show()\n\n\n\n\n\n\n\n\nFigure 2.3: Placebo-in-space inference: gap paths for the treated market and placebo donors (left) and the ranked post/pre RMSPE ratios (right).\n\n\n\n\n\nWith 30 donors the smallest attainable p-value is 1/31 ≈ 0.032: placebo inference needs a reasonably large donor pool.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html#robustness-leave-one-donor-out",
+    "href": "02_synthetic_control.html#robustness-leave-one-donor-out",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "2.4 Robustness: leave one donor out",
+    "text": "2.4 Robustness: leave one donor out\nIf the result hinges on a single donor (which might have had its own shock), it’s fragile. Drop each donor with positive weight and refit.\n\n\nCode\nloo = []\nfor donor in sc.weights[sc.weights &gt; 0.01].index:\n    r = synth.synthetic_control(wide.drop(columns=donor), TREATED, TREAT_TIME)\n    loo.append({\"dropped\": donor, \"weight_in_full_fit\": sc.weights[donor], \"ATT\": r.att, \"pre_rmspe\": r.pre_rmspe})\npd.DataFrame(loo).assign(full_ATT=sc.att)\n\n\n\n\nTable 2.3: Leave-one-donor-out refits for each donor with positive weight.\n\n\n\n\n\n\n\n\n\n\ndropped\nweight_in_full_fit\nATT\npre_rmspe\nfull_ATT\n\n\n\n\n0\nmarket_03\n0.147\n-3.052\n0.458\n-2.962\n\n\n1\nmarket_08\n0.252\n-2.842\n0.512\n-2.962\n\n\n2\nmarket_14\n0.041\n-2.965\n0.453\n-2.962\n\n\n3\nmarket_19\n0.516\n-1.403\n0.920\n-2.962\n\n\n4\nmarket_24\n0.045\n-2.920\n0.454\n-2.962\n\n\n\n\n\n\n\n\n\n\nIn Table 2.3, dropping most donors barely moves the estimate, but dropping the top-weighted donor roughly halves it and doubles the pre-period RMSPE — the remaining pool can’t reproduce the treated market as well. That’s the kind of dependence to report and investigate (is that donor genuinely the best comparison, or did it have its own shock?), and a natural case for augmented SC, which corrects for imperfect pre-fit.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html#did-vs-synthetic-control-decision-guide",
+    "href": "02_synthetic_control.html#did-vs-synthetic-control-decision-guide",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "2.5 DiD vs synthetic control: decision guide",
+    "text": "2.5 DiD vs synthetic control: decision guide\n\n\n\nTable 2.4: Difference-in-differences versus synthetic control.\n\n\n\n\n\n\n\n\n\n\n\nDiD\nSynthetic control\n\n\n\n\nTreated units\nMany\nOne / few aggregates\n\n\nComparison\nEqual-weight (or regression) average of controls\nData-driven convex weights\n\n\nKey assumption\nParallel trends with the average control\nTreated unit lies in the convex hull of donors; donor combination keeps tracking it\n\n\nNeeds\nA control group with similar trends\nLong pre-period; donors not hit by the treatment or spillovers\n\n\nInference\nClustered SEs\nPlacebo permutations / conformal\n\n\nFails when\nTrends diverge\nTreated unit is extreme (outside donor hull) — weights can’t reach it\n\n\n\n\n\n\n\n\n\n\n\n\nTipWorkflow\n\n\n\n\nplot pre-trends; (2) fit both; (3) compare backtest error; (4) if they agree, report both — agreement is reassuring; if they disagree, the backtest tells you which counterfactual to trust; (5) placebo inference + leave-one-out.\n\n\n\n\n\n\n\n\n\nNoteHybrids that bridge the two\n\n\n\nSynthetic DiD (Arkhangelsky et al. 2021) adds unit + time weights to DiD; Augmented SC (Ben-Michael et al. 2021) bias-corrects SC with an outcome model when pre-fit is imperfect. Libraries: pysyncon (SC, augmented SC, placebo tests), SparseSC, synthdid ports; Google’s CausalImpact / tfcausalimpact is a Bayesian structural-time-series cousin.\n\n\n\nBen-Michael, Eli, Avi Feller, and Jesse Rothstein. 2021. “The Augmented Synthetic Control Method.” Journal of the American Statistical Association.\n\nArkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager. 2021. “Synthetic Difference-in-Differences.” American Economic Review.\n\n\n\n\n\n\nWarningPractical gotchas\n\n\n\nexclude donors that could receive spillovers (neighbouring markets) or had their own interventions; match on outcome levels and key predictors when the pre-period is short; standardize if outcomes have very different scales across donors.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "02_synthetic_control.html#check-your-understanding",
+    "href": "02_synthetic_control.html#check-your-understanding",
+    "title": "2  Synthetic Control, and Choosing Between SC and DiD",
+    "section": "2.6 Check your understanding",
+    "text": "2.6 Check your understanding\n\n\n\n\n\n\nTipWhy isn’t in-sample pre-period fit enough to choose between SC and DiD?\n\n\n\n\n\nThe more flexible method always fits the pre-period better, because its weights are chosen to do exactly that. The backtest holds out the last pre-treatment periods and scores the forecast where the true effect is zero.\n\n\n\n\n\n\n\n\n\nTipWhy can’t the placebo p-value go below about 0.03 with 30 donors?\n\n\n\n\n\nThe treated unit is ranked among 31 units (itself plus 30 placebos), so its smallest possible p-value is 1/31 ≈ 0.032.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nSet TRUE_EFFECT = 0.0 in the data cell and re-render. Does the placebo p-value stay small, and what happens to the backtest comparison?",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Synthetic Control, and Choosing Between SC and DiD</span>"
+    ]
+  },
+  {
+    "objectID": "03_event_studies.html",
+    "href": "03_event_studies.html",
+    "title": "3  Event Studies",
+    "section": "",
+    "text": "3.1 Part A · Abnormal returns with the market model\n“Event study” names two closely related designs:\nBoth share the same idea: align every unit on event time (time relative to its own event), and estimate effects per event-time period.\nFor each firm \\(i\\) with event day \\(d_i\\):\nCode\nfrom causalsimkit import simulate, events\n\nreturns, market, event_day = simulate.stock_returns(n_firms=60, event_jump=0.02, drift=0.002, drift_days=5, seed=3)\nar = events.market_model_abnormal_returns(returns, market, event_day,\n                                          estimation_window=(-250, -30), event_window=(-5, 10))\nagg = events.aggregate_abnormal_returns(ar)\nagg.head(8)\n\n\n\n\nTable 3.1: Average abnormal return (AAR) and its cumulative version (CAAR) by event day, first eight days.\n\n\n\n\n\n\n\n\n\n\naar\naar_se\ncaar\ncaar_se\nn\naar_t\ncaar_t\ncaar_p\n\n\nrel_day\n\n\n\n\n\n\n\n\n\n\n\n\n-5\n-3.539e-04\n0.002\n-3.539e-04\n0.002\n60\n-0.182\n-0.182\n0.856\n\n\n-4\n-1.008e-04\n0.002\n-4.547e-04\n0.003\n60\n-0.047\n-0.148\n0.883\n\n\n-3\n-1.543e-03\n0.002\n-1.998e-03\n0.004\n60\n-0.826\n-0.525\n0.601\n\n\n-2\n-1.339e-03\n0.003\n-3.337e-03\n0.005\n60\n-0.527\n-0.678\n0.501\n\n\n-1\n6.017e-04\n0.002\n-2.735e-03\n0.005\n60\n0.359\n-0.501\n0.618\n\n\n0\n1.548e-02\n0.002\n1.274e-02\n0.007\n60\n7.488\n1.922\n0.059\n\n\n1\n2.826e-03\n0.002\n1.557e-02\n0.007\n60\n1.369\n2.248\n0.028\n\n\n2\n2.287e-03\n0.002\n1.785e-02\n0.007\n60\n1.139\n2.577\n0.012\nCode\nfig, axes = plt.subplots(1, 2, figsize=(13, 4))\naxes[0].bar(agg.index, agg.aar * 100, yerr=1.96 * agg.aar_se * 100, capsize=2, color=\"C0\")\naxes[0].set(title=\"Average abnormal return (AAR) by event day\", xlabel=\"days relative to event\", ylabel=\"%\")\naxes[1].plot(agg.index, agg.caar * 100, \"o-\")\naxes[1].fill_between(agg.index, (agg.caar - 1.96 * agg.caar_se) * 100, (agg.caar + 1.96 * agg.caar_se) * 100, alpha=0.2)\naxes[1].set(title=\"Cumulative average abnormal return (CAAR)\", xlabel=\"days relative to event\", ylabel=\"%\")\nfor ax in axes:\n    ax.axvline(-0.5, ls=\"--\", c=\"grey\"); ax.axhline(0, c=\"k\", lw=0.8)\nplt.show()\n\n\n\n\n\n\n\n\nFigure 3.1: Average abnormal return by event day (left) and cumulative average abnormal return (right), with 95% intervals.\nReport CARs over a few pre-specified windows. The pre-event window [−5,−1] is a placebo: a significant value there suggests leakage or a mis-dated event.\nCode\nfrom scipy import stats\n\ndef car_test(start, end):\n    c = events.car(ar, start, end)\n    t = c.mean() / c.sem()\n    return {\"window\": f\"[{start:+d}, {end:+d}]\", \"mean_CAR_%\": 100 * c.mean(), \"t\": t,\n            \"p\": 2 * stats.t.sf(abs(t), len(c) - 1), \"share_positive\": (c &gt; 0).mean()}\n\npd.DataFrame([car_test(-5, -1), car_test(0, 0), car_test(0, 5), car_test(0, 10)])\n\n\n\n\nTable 3.2: Cumulative abnormal return (CAR) tests over pre-specified windows. The pre-event window [-5, -1] is a placebo.\n\n\n\n\n\n\n\n\n\n\nwindow\nmean_CAR_%\nt\np\nshare_positive\n\n\n\n\n0\n[-5, -1]\n-0.274\n-0.501\n6.180e-01\n0.467\n\n\n1\n[+0, +0]\n1.548\n7.488\n4.029e-10\n0.883\n\n\n2\n[+0, +5]\n2.585\n5.404\n1.229e-06\n0.783\n\n\n3\n[+0, +10]\n1.838\n2.987\n4.103e-03\n0.583",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Event Studies</span>"
+    ]
+  },
+  {
+    "objectID": "03_event_studies.html#part-a-abnormal-returns-with-the-market-model",
+    "href": "03_event_studies.html#part-a-abnormal-returns-with-the-market-model",
+    "title": "3  Event Studies",
+    "section": "",
+    "text": "Estimation window (here days −250 to −30): fit \\(r_{it} = \\alpha_i + \\beta_i r_{mt} + \\varepsilon_{it}\\). The gap before the event keeps leakage/run-up out of the benchmark.\nEvent window (−5 to +10): abnormal return \\(AR_{it} = r_{it} - (\\hat\\alpha_i + \\hat\\beta_i r_{mt})\\).\nAggregate: average AR by event day (AAR), cumulative AR (CAR1), and cross-sectional tests.\n\n1 CAR: cumulative abnormal return, the sum of a firm’s abnormal returns over a window. CAAR is its average across firms.\n\n\n\n\n\nNoteSimulated truth\n\n\n\n+2% on day 0 and +0.2%/day drift for 5 days, so true CAR[0,+5] = 3.0%.\n\n\n\n\n\n\n\n\n\n\n\n\nTipPractical notes: financial event studies\n\n\n\n\nBenchmarks: market model is the workhorse; Fama–French 3/5-factor or industry benchmarks matter for long windows or small caps.\nEvent-date clustering: if many firms share the same event date (e.g. a regulation), their ARs are cross-correlated and the cross-sectional t-test overstates precision — use portfolio/calendar-time approaches.\nEvent-induced variance: volatility often spikes on event days; the cross-sectional test used here is robust to that, as is the Boehmer–Musumeci–Poulsen (BMP) standardized test.\nConfounding events: screen out firms with other news (earnings + M&A on the same day) in the window.\nLong horizons: CARs compound benchmark misspecification; prefer buy-and-hold abnormal returns with matched benchmarks or calendar-time portfolios.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Event Studies</span>"
+    ]
+  },
+  {
+    "objectID": "03_event_studies.html#part-b-staggered-rollout-of-a-feature-across-markets",
+    "href": "03_event_studies.html#part-b-staggered-rollout-of-a-feature-across-markets",
+    "title": "3  Event Studies",
+    "section": "3.2 Part B · Staggered rollout of a feature across markets",
+    "text": "3.2 Part B · Staggered rollout of a feature across markets\nUnits adopt in three cohorts (periods 6, 11, 16) plus a never-treated group. The effect differs by cohort (earlier adopters benefit more) and grows by 0.3 per period after adoption.\nWhy TWFE breaks: with staggered timing, TWFE implicitly uses already-treated units as controls for later adopters. When effects grow over time, those “controls” are still changing because of treatment, contaminating the comparison (Goodman-Bacon 2021; Chaisemartin and D’Haultfœuille 2020; Sun and Abraham 2021).\n\nGoodman-Bacon, Andrew. 2021. “Difference-in-Differences with Variation in Treatment Timing.” Journal of Econometrics.\n\nChaisemartin, Clément de, and Xavier D’Haultfœuille. 2020. “Two-Way Fixed Effects Estimators with Heterogeneous Treatment Effects.” American Economic Review.\n\nSun, Liyang, and Sarah Abraham. 2021. “Estimating Dynamic Treatment Effects in Event Studies with Heterogeneous Treatment Effects.” Journal of Econometrics.\n\nCallaway, Brantly, and Pedro H. C. Sant’Anna. 2021. “Difference-in-Differences with Multiple Time Periods.” Journal of Econometrics.\nThe fix used here is Callaway & Sant’Anna (2021): estimate each cohort-by-period effect \\(ATT(g,t)\\) with a clean 2×2 comparison (cohort \\(g\\) vs never-treated, relative to period \\(g-1\\)), then aggregate by event time.\n\n\nCode\nfrom causalsimkit import did\nfrom causalsimkit.utils import cluster_bootstrap\n\npanel = simulate.staggered_panel(n_units=120, n_periods=24, cohorts=(6, 11, 16), growth=0.3, seed=5)\ntruth_by_e = panel[panel.D == 1].groupby(\"rel_time\")[\"true_te\"].mean()\ntrue_overall = panel.loc[panel.D == 1, \"true_te\"].mean()\n\nfig, ax = plt.subplots()\nfor g, d in panel.groupby(\"cohort\"):\n    m = d.groupby(\"period\")[\"y\"].mean()\n    ax.plot(m.index, m, label=\"never treated\" if g == 0 else f\"cohort {g}\")\n    if g:\n        ax.axvline(g - 0.5, ls=\":\", c=ax.lines[-1].get_color())\nax.set(title=\"KPI by adoption cohort\", xlabel=\"period\", ylabel=\"mean KPI\"); ax.legend(); plt.show()\n\n\n\n\n\n\n\n\nFigure 3.2: Mean KPI by adoption cohort. Dotted vertical lines mark each cohort’s adoption period.\n\n\n\n\n\n\n\nCode\n# Static TWFE vs Callaway-Sant'Anna overall ATT\ntwfe = did.twfe_did(panel, \"y\", \"unit\", \"period\", \"D\")\n1gt = did.group_time_att(panel, \"y\", \"unit\", \"period\", \"cohort\")\n2cs_overall = did.aggregate_overall(gt)\n\nboot = cluster_bootstrap(\n    panel, \"unit\",\n    lambda d: pd.concat([did.aggregate_event_time(did.group_time_att(d, \"y\", \"unit\", \"period\", \"cohort\")),\n                         pd.Series({\"overall\": did.aggregate_overall(did.group_time_att(d, \"y\", \"unit\", \"period\", \"cohort\"))})]),\n    n_boot=150, seed=0)\n\npd.DataFrame({\n    \"estimate\": [twfe.params[\"D\"], cs_overall],\n    \"se\": [twfe.bse[\"D\"], boot[\"overall\"].std()],\n    \"truth (avg effect over treated cells)\": [true_overall] * 2,\n}, index=[\"static TWFE\", \"Callaway-Sant'Anna\"])\n\n\n\n1\n\nCallaway–Sant’Anna ATT(g, t): for each cohort g and period t, compare the cohort’s change since period g−1 with the change among never-treated units. Pre-period cells are placebo estimates and should be near 0.\n\n2\n\nThe overall ATT averages the post-treatment cells, weighted by the number of units in each cell.\n\n\n\n\n\n\nTable 3.3: Static TWFE versus Callaway–Sant’Anna overall ATT, with the true average effect.\n\n\n\n\n\n\n\n\n\n\nestimate\nse\ntruth (avg effect over treated cells)\n\n\n\n\nstatic TWFE\n2.811\n0.156\n4.249\n\n\nCallaway-Sant'Anna\n4.306\n0.176\n4.249\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nes_tab, _ = did.event_study(panel, \"y\", \"unit\", \"period\", \"rel_time\", window=(-5, 7))\ncs_e = did.aggregate_event_time(gt).loc[-5:7]\ncs_se = boot[[c for c in boot.columns if c != \"overall\"]].std().loc[-5:7]\n\nfig, ax = plt.subplots(figsize=(10, 4.5))\nax.plot(truth_by_e.loc[:7].index, truth_by_e.loc[:7], \"k-\", lw=2, label=\"truth\")\nax.errorbar(es_tab.rel_time - 0.12, es_tab.coef, yerr=1.96 * es_tab.se, fmt=\"s\", capsize=2, label=\"dynamic TWFE\")\nax.errorbar(cs_e.index + 0.12, cs_e, yerr=1.96 * cs_se, fmt=\"o\", capsize=2, label=\"Callaway-Sant'Anna\")\nax.axhline(0, c=\"k\", lw=0.8); ax.axvline(-0.5, ls=\"--\", c=\"grey\")\nax.set(title=\"Event-study estimates vs truth\", xlabel=\"periods relative to adoption\", ylabel=\"effect on KPI\")\nax.legend(); plt.show()\n\n\n\n\n\n\n\n\nFigure 3.3: Event-study estimates from dynamic TWFE and Callaway–Sant’Anna against the true effect by event time.\n\n\n\n\n\nIn Figure 3.3 and Table 3.3, static TWFE understates the average effect: later periods for early adopters get absorbed as “control” variation. The dynamic TWFE event study does better in the middle of the window (a large never-treated group helps), but look at the binned endpoints (−5 and +7): they pool many heterogeneous periods and come out biased, and the spurious −5 lead could be misread as a pre-trend. More generally, Sun & Abraham show TWFE lead/lag coefficients mix in effects from other periods whenever effects are heterogeneous across cohorts. Callaway–Sant’Anna tracks the truth because every comparison is a clean 2×2.\nPre-period CS estimates (negative event times) are placebo tests of parallel trends for each cohort.\n\n\n\n\n\n\nTipPractical notes: rollout event studies\n\n\n\n\nPrefer heterogeneity-robust estimators: Callaway–Sant’Anna, Sun–Abraham (interaction-weighted), Borusyak–Jaravel–Spiess imputation, or stacked DiD.\nUse not-yet-treated units as controls when there is no never-treated group (and sometimes even when there is — they’re often more comparable).\nRollout order is rarely random: if markets with the best expected gains go first, cohorts differ systematically. Check pre-trends by cohort.\nEvent-time estimates far from zero are identified from fewer cohorts — show cohort composition or trim the window.\nLibraries: csdid (Python port of R did), differences, pyfixest (did2s, saturated event studies), linearmodels.",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Event Studies</span>"
+    ]
+  },
+  {
+    "objectID": "03_event_studies.html#check-your-understanding",
+    "href": "03_event_studies.html#check-your-understanding",
+    "title": "3  Event Studies",
+    "section": "3.3 Check your understanding",
+    "text": "3.3 Check your understanding\n\n\n\n\n\n\nTipWhy does static TWFE go wrong with staggered adoption?\n\n\n\n\n\nAlready-treated units serve as controls for later adopters. When effects grow over time, those controls are still changing because of treatment, which contaminates the comparison.\n\n\n\n\n\n\n\n\n\nTipWhat does the pre-event window [−5, −1] tell you in the financial event study?\n\n\n\n\n\nIt is a placebo window. A significant abnormal return there points to information leakage or a mis-dated event.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nIn the staggered-panel cell set growth=0.0 and re-render. How much of the gap between static TWFE and Callaway–Sant’Anna remains once effects no longer grow?",
+    "crumbs": [
+      "Panel and time-series designs",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Event Studies</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html",
+    "href": "04_regression_discontinuity.html",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "",
+    "text": "4.1 Local linear estimate\nSetting: treatment is assigned by a strict rule on a continuous running variable: customers with a risk score ≥ 0 get a premium offer, students above a test cutoff get a scholarship, stores above a revenue threshold get a new process.\nUnits just above and just below the cutoff are nearly identical, so the jump in the outcome at the cutoff is the causal effect for units at the threshold (Equation 4.1):\n\\[\\tau_{RD} = \\lim_{x \\downarrow c} E[Y \\mid X=x] - \\lim_{x \\uparrow c} E[Y \\mid X=x] \\tag{4.1}\\]\nFit separate linear regressions on each side within bandwidth \\(h\\), weighting observations closer to the cutoff more (triangular kernel1). The coefficient on the treatment dummy is the jump. Local linear (not local constant) is standard because it has much smaller bias at a boundary.\nCode\n1r = rdd.local_poly_rd(df.score, df.y, cutoff=CUTOFF, bandwidth=0.3, kernel=\"triangular\", order=1)\nprint(f\"RD estimate {r.estimate:.3f}  (SE {r.se:.3f}, 95% CI {r.ci[0]:.3f} to {r.ci[1]:.3f})  \"\n      f\"n_left={r.n_left}, n_right={r.n_right}; truth = {TRUE_EFFECT}\")\n\n\n\n1\n\nA kernel-weighted local linear fit on each side of the cutoff: triangular weights fall to zero at distance bandwidth (0.3) and order=1 is a straight line. The jump at the cutoff is the estimate, with HC1 standard errors.\n\n\n\n\nRD estimate 0.480  (SE 0.069, 95% CI 0.346 to 0.615)  n_left=756, n_right=729; truth = 0.5",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html#local-linear-estimate",
+    "href": "04_regression_discontinuity.html#local-linear-estimate",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "",
+    "text": "1 Triangular kernel: an observation’s weight falls linearly from 1 at the cutoff to 0 at the edge of the bandwidth.",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html#bandwidth-sensitivity",
+    "href": "04_regression_discontinuity.html#bandwidth-sensitivity",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "4.2 Bandwidth sensitivity",
+    "text": "4.2 Bandwidth sensitivity\nThe bandwidth is a bias–variance trade-off: narrow = less bias from curvature but noisier; wide = more precise but leans on the functional form. Results should be stable over a reasonable range. (In production, use the MSE-optimal bandwidth and robust bias-corrected CIs from rdrobust.)\n\n\nCode\nhs = np.round(np.arange(0.05, 1.01, 0.05), 2)\nsens = pd.DataFrame([vars(rdd.local_poly_rd(df.score, df.y, CUTOFF, bandwidth=h)) for h in hs])\n\nfig, ax = plt.subplots()\nax.errorbar(sens.bandwidth, sens.estimate, yerr=1.96 * sens.se, fmt=\"o\", capsize=3)\nax.axhline(TRUE_EFFECT, c=\"green\", ls=\":\", label=\"truth\")\nax.set(title=\"Local linear estimate vs bandwidth\", xlabel=\"bandwidth h\", ylabel=\"RD estimate (95% CI)\")\nax.legend(); plt.show()\n\n\n\n\n\n\n\n\nFigure 4.2: Local linear RD estimate (95% CI) as the bandwidth grows. The dotted line is the true effect.\n\n\n\n\n\nIn Figure 4.2, wide bandwidths drift away from the truth: a straight line can’t follow the cubic curvature over a wide range. Local quadratic is more robust to wide windows at the cost of variance:\n\n\nCode\nrows = []\nfor kernel in (\"triangular\", \"epanechnikov\", \"uniform\"):\n    for order in (1, 2):\n        for h in (0.2, 0.4, 0.8):\n            e = rdd.local_poly_rd(df.score, df.y, CUTOFF, bandwidth=h, kernel=kernel, order=order)\n            rows.append({\"kernel\": kernel, \"order\": order, \"h\": h, \"estimate\": e.estimate, \"se\": e.se})\npd.DataFrame(rows).pivot_table(index=[\"kernel\", \"order\"], columns=\"h\", values=\"estimate\")\n\n\n\n\nTable 4.1: RD estimates by kernel, polynomial order and bandwidth.\n\n\n\n\n\n\n\n\n\n\nh\n0.2\n0.4\n0.8\n\n\nkernel\norder\n\n\n\n\n\n\n\nepanechnikov\n1\n0.517\n0.450\n0.275\n\n\n2\n0.550\n0.514\n0.479\n\n\ntriangular\n1\n0.521\n0.459\n0.303\n\n\n2\n0.547\n0.520\n0.487\n\n\nuniform\n1\n0.489\n0.425\n0.195\n\n\n2\n0.570\n0.515\n0.474",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html#validity-checks",
+    "href": "04_regression_discontinuity.html#validity-checks",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "4.3 Validity checks",
+    "text": "4.3 Validity checks\n(a) Density / manipulation test. If units can game the score (e.g. salespeople nudging deals just over a quota), there will be bunching just above the cutoff, and those units differ from the ones just below. We compare a clean dataset to one where 60% of units just below the cutoff pushed themselves over.\n\n\nCode\nmanip = simulate.rdd_data(n=5000, cutoff=CUTOFF, effect=TRUE_EFFECT, manipulation=0.6, seed=0)\nfig, axes = plt.subplots(1, 2, figsize=(12, 3.8), sharey=True)\nfor ax, (name, d) in zip(axes, {\"clean\": df, \"manipulated\": manip}.items()):\n    t = rdd.density_test(d.score, CUTOFF, bandwidth=0.3, bin_width=0.02)\n    ax.hist(d.score, bins=np.arange(-1, 1.001, 0.04), color=\"C0\", alpha=0.7)\n    ax.axvline(CUTOFF, ls=\"--\", c=\"k\")\n    ax.set(title=f\"{name}: log density ratio = {t['log_ratio']:.2f}, p = {t['p']:.3g}\", xlabel=\"score\")\nplt.show()\n\n\n\n\n\n\n\n\nFigure 4.3: Density test: a clean dataset (left) versus one where units just below the cutoff pushed themselves over (right).\n\n\n\n\n\n(b) Covariate continuity. Pre-treatment covariates can’t be affected by treatment, so they should show no jump. Run the same RD with the covariate as the outcome.\n(c) Placebo cutoffs. At fake cutoffs (using only data on one side of the true one, so the real jump doesn’t leak in) there should be no effect.\n\n\nCode\ncov = rdd.local_poly_rd(df.score, df.z, CUTOFF, bandwidth=0.3)\nprint(f\"Covariate z jump at cutoff: {cov.estimate:.3f} (p = {cov.p:.2f})  -&gt; should be ~0\\n\")\n\nplacebo = []\nfor c in (-0.6, -0.4, -0.2, 0.2, 0.4, 0.6):\n    side = df[df.score &lt; CUTOFF] if c &lt; CUTOFF else df[df.score &gt;= CUTOFF]\n    e = rdd.local_poly_rd(side.score, side.y, cutoff=c, bandwidth=0.15)\n    placebo.append({\"cutoff\": c, \"estimate\": e.estimate, \"p\": e.p})\nplacebo.append({\"cutoff\": CUTOFF, \"estimate\": r.estimate, \"p\": r.p})\npd.DataFrame(placebo).sort_values(\"cutoff\")\n\n\nCovariate z jump at cutoff: -0.131 (p = 0.29)  -&gt; should be ~0\n\n\n\n\n\n\n\n\n\n\ncutoff\nestimate\np\n\n\n\n\n0\n-0.6\n-0.102\n3.328e-01\n\n\n1\n-0.4\n-0.029\n7.651e-01\n\n\n2\n-0.2\n-0.021\n8.262e-01\n\n\n6\n0.0\n0.480\n2.802e-12\n\n\n3\n0.2\n0.063\n4.885e-01\n\n\n4\n0.4\n0.142\n1.462e-01\n\n\n5\n0.6\n-0.045\n6.172e-01",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html#practical-notes",
+    "href": "04_regression_discontinuity.html#practical-notes",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "4.4 Practical notes",
+    "text": "4.4 Practical notes\n\nDon’t use global high-order polynomials (e.g. a 5th-order fit over the whole range). They give noisy, misleading estimates at the boundary (Gelman and Imbens 2019). Use local linear/quadratic.\nFuzzy RD: if crossing the cutoff only raises the probability of treatment, the jump in the outcome divided by the jump in treatment take-up is a local IV/LATE estimate (rdrobust handles this with fuzzy=).\nExternal validity: the estimate is local to units near the cutoff. Extrapolating to units far away requires extra assumptions.\nDiscrete running variables (e.g. integer scores) need care — few mass points near the cutoff; see rdrobust/rdlocrand guidance.\nLibraries: rdrobust (optimal bandwidths, robust bias-corrected inference), rddensity (Cattaneo–Jansson–Ma density test), rdlocrand (local randomization inference).",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "04_regression_discontinuity.html#check-your-understanding",
+    "href": "04_regression_discontinuity.html#check-your-understanding",
+    "title": "4  Regression Discontinuity Design (RDD)",
+    "section": "4.5 Check your understanding",
+    "text": "4.5 Check your understanding\n\n\n\n\n\n\nTipWhy use local linear regression instead of a high-order global polynomial?\n\n\n\n\n\nGlobal high-order polynomials give noisy, misleading estimates at the boundary (Gelman and Imbens 2019). Local linear fits have much smaller bias at a boundary and use only nearby data.\n\n\n\n\nGelman, Andrew, and Guido Imbens. 2019. “Why High-Order Polynomials Should Not Be Used in Regression Discontinuity Designs.” Journal of Business & Economic Statistics.\n\n\n\n\n\n\nTipWhat does the density test detect, and what does a significant result mean?\n\n\n\n\n\nIt detects bunching just above or below the cutoff, a sign that units sorted themselves across it. Then units on either side are no longer comparable and the smoothness assumption fails.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nIn the density-test cell change manipulation=0.6 to 0.2 and re-render. How do the log density ratio and p-value change, and at what level is the manipulation hard to see?",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Regression Discontinuity Design (RDD)</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html",
+    "href": "05_propensity_scores.html",
+    "title": "5  Propensity-Score Methods",
+    "section": "",
+    "text": "5.1 Estimate the propensity score and check overlap\nSetting: observational data — nobody randomized treatment. Example: customers who chose to enroll in a loyalty program; we want the program’s effect on spend. Enrollees differ systematically (more engaged, higher income), so a naive comparison mixes the program effect with selection.\nPropensity score: \\(e(x) = P(T=1 \\mid X=x)\\). Rosenbaum and Rubin (1983): if treatment is as-good-as-random given \\(X\\), it is also as-good-as-random given the scalar \\(e(X)\\). So we can balance many confounders through one number.\nOverlap is the first thing to look at. Regions where one group has (almost) no counterparts are where every estimator extrapolates — IPW weights explode there. Common remedies: trim to a region of common support [e.g. 0.05 &lt; e &lt; 0.95; Crump et al. (2009)], or switch the estimand (ATT, or overlap weights).\nCode\nps = ps_lib.fit_propensity(X, t)\n\nfig, ax = plt.subplots()\nbins = np.linspace(0, 1, 41)\nax.hist(ps[t == 1], bins=bins, alpha=0.6, density=True, label=\"treated\")\nax.hist(ps[t == 0], bins=bins, alpha=0.6, density=True, label=\"control\")\nax.set(title=\"Propensity score overlap\", xlabel=\"estimated P(treated | X)\", ylabel=\"density\"); ax.legend()\nplt.show()\nprint(f\"share with e(x) outside [0.05, 0.95]: {np.mean((ps &lt; 0.05) | (ps &gt; 0.95)):.1%}\")\n\n\n\n\n\n\n\n\nFigure 5.1: Estimated propensity score distributions for treated and control units.\n\n\n\n\n\nshare with e(x) outside [0.05, 0.95]: 1.4%",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#estimate-the-propensity-score-and-check-overlap",
+    "href": "05_propensity_scores.html#estimate-the-propensity-score-and-check-overlap",
+    "title": "5  Propensity-Score Methods",
+    "section": "",
+    "text": "Crump, Richard K., V. Joseph Hotz, Guido W. Imbens, and Oscar A. Mitnik. 2009. “Dealing with Limited Overlap in Estimation of Average Treatment Effects.” Biometrika.",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#balance-diagnostics-love-plot",
+    "href": "05_propensity_scores.html#balance-diagnostics-love-plot",
+    "title": "5  Propensity-Score Methods",
+    "section": "5.2 Balance diagnostics (love plot)",
+    "text": "5.2 Balance diagnostics (love plot)\nThe goal of a propensity model is balance, not prediction accuracy — judge it by standardized mean differences (SMD1) after weighting/matching, not by AUC. |SMD| &lt; 0.1 is the usual rule of thumb. Check the covariates and relevant transformations (squares, interactions).\n1 SMD: standardized mean difference, the difference in group means divided by the pooled standard deviation.\n\nCode\nw_ate = ps_lib.ipw_weights(t, ps, \"ATE\")\nw_att = ps_lib.ipw_weights(t, ps, \"ATT\")\nbalance = pd.DataFrame({\n    \"unweighted\": ps_lib.standardized_mean_diff(X, t),\n    \"IPW (ATE)\": ps_lib.standardized_mean_diff(X, t, w_ate),\n    \"IPW (ATT)\": ps_lib.standardized_mean_diff(X, t, w_att),\n})\n\nfig, ax = plt.subplots(figsize=(7, 3.5))\nfor i, col in enumerate(balance):\n    ax.scatter(balance[col].abs(), balance.index, label=col, s=50, marker=\"osd\"[i])\nax.axvline(0.1, ls=\"--\", c=\"grey\")\nax.set(title=\"Covariate balance (|standardized mean difference|)\", xlabel=\"|SMD|\"); ax.legend()\nplt.show()\nbalance\n\n\n\n\n\n\n\n\n\n\n\n(a) Love plot: absolute standardized mean differences before and after IPW. The dashed line marks 0.1.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nunweighted\nIPW (ATE)\nIPW (ATT)\n\n\n\n\nx1\n0.811\n0.024\n0.007\n\n\nx2\n-0.478\n-0.017\n-0.042\n\n\nx3\n0.278\n0.033\n0.033\n\n\nx4\n0.168\n0.013\n-0.010\n\n\nx3_sq\n0.022\n0.002\n0.009\n\n\n\n\n\n\n\n(b)\n\n\n\n\n\nFigure 5.2",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#estimate-the-effect-several-ways",
+    "href": "05_propensity_scores.html#estimate-the-effect-several-ways",
+    "title": "5  Propensity-Score Methods",
+    "section": "5.3 Estimate the effect several ways",
+    "text": "5.3 Estimate the effect several ways\n\nRegression adjustment: model \\(E[Y|X,T]\\) and average predicted differences. Relies entirely on the outcome model.\nIPW: reweight so the treated and control groups each look like the target population. Relies entirely on the propensity model; variance blows up with extreme weights.\nMatching (ATT): pair each treated unit with the control closest in (logit) propensity, within a caliper.\nAIPW: combines both models; consistent if either is right, and efficient if both are. With cross-fitting it pairs naturally with flexible ML learners (the double/debiased ML recipe).\n\nBootstrap SEs for IPW and matching; AIPW gets an analytic influence-function SE.\n\n\nCode\nfrom sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor\nfrom sklearn.linear_model import LinearRegression\n\ndef regression_adjustment(Xd, yd, td):\n    m1 = LinearRegression().fit(Xd[td == 1], yd[td == 1])\n    m0 = LinearRegression().fit(Xd[td == 0], yd[td == 0])\n    return float(np.mean(m1.predict(Xd) - m0.predict(Xd)))\n\ndef bootstrap_se(fn, n_boot=200, seed=0):\n    rng = np.random.default_rng(seed)\n    draws = []\n    for _ in range(n_boot):\n        i = rng.integers(0, len(df), len(df))\n        Xb, yb, tb = X.iloc[i].reset_index(drop=True), y.iloc[i].reset_index(drop=True), t.iloc[i].reset_index(drop=True)\n        draws.append(fn(Xb, yb, tb))\n    return float(np.std(draws, ddof=1))\n\nipw_ate = lambda Xd, yd, td: ps_lib.ipw(yd, td, ps_lib.fit_propensity(Xd, td), \"ATE\").estimate\nipw_att = lambda Xd, yd, td: ps_lib.ipw(yd, td, ps_lib.fit_propensity(Xd, td), \"ATT\").estimate\nmatch = lambda Xd, yd, td: ps_lib.match_att(yd, td, ps_lib.fit_propensity(Xd, td), caliper=0.05)[0].estimate\n\nm1 = LinearRegression().fit(X[t == 1], y[t == 1]); m0 = LinearRegression().fit(X[t == 0], y[t == 0])\n1aipw = ps_lib.aipw(y, t, ps, m0.predict(X), m1.predict(X))\n2cf_ml = ps_lib.cross_fit_aipw(df[COVARIATES], y, t,\n                              outcome_model=GradientBoostingRegressor(max_depth=3, n_estimators=200),\n                              ps_model=GradientBoostingClassifier(max_depth=2, n_estimators=150))\n\nmatch_est, matches = ps_lib.match_att(y, t, ps, caliper=0.05)\nresults = pd.DataFrame([\n    {\"method\": \"naive difference\", \"estimand\": \"-\", \"estimate\": naive, \"se\": np.nan},\n    {\"method\": \"regression adjustment\", \"estimand\": \"ATE\", \"estimate\": regression_adjustment(X, y, t), \"se\": bootstrap_se(regression_adjustment)},\n    {\"method\": \"IPW (Hajek)\", \"estimand\": \"ATE\", \"estimate\": ipw_ate(X, y, t), \"se\": bootstrap_se(ipw_ate)},\n    {\"method\": \"IPW (Hajek)\", \"estimand\": \"ATT\", \"estimate\": ipw_att(X, y, t), \"se\": bootstrap_se(ipw_att)},\n    {\"method\": match_est.name, \"estimand\": \"ATT\", \"estimate\": match_est.estimate, \"se\": bootstrap_se(match, n_boot=100)},\n    {\"method\": \"AIPW (linear outcome, logit PS)\", \"estimand\": \"ATE\", \"estimate\": aipw.estimate, \"se\": aipw.se},\n    {\"method\": \"cross-fit AIPW (gradient boosting, raw X)\", \"estimand\": \"ATE\", \"estimate\": cf_ml.estimate, \"se\": cf_ml.se},\n])\nresults[\"truth\"] = results.estimand.map({\"ATE\": TRUE_ATE, \"ATT\": TRUE_ATT})\nresults\n\n\n\n1\n\nAIPW combines the propensity score ps with outcome-model predictions for control (m0) and treated (m1) units. It is consistent if either model is right.\n\n2\n\nThe cross-fitted version fits the nuisance models out-of-fold, so flexible ML learners (gradient boosting here) do not overfit their way into bias.\n\n\n\n\n\n\nTable 5.1: Effect estimates by method, with the true ATE and ATT.\n\n\n\n\n\n\n\n\n\n\nmethod\nestimand\nestimate\nse\ntruth\n\n\n\n\n0\nnaive difference\n-\n1.895\nNaN\nNaN\n\n\n1\nregression adjustment\nATE\n0.980\n0.032\n1.000\n\n\n2\nIPW (Hajek)\nATE\n1.021\n0.046\n1.000\n\n\n3\nIPW (Hajek)\nATT\n1.144\n0.064\n1.193\n\n\n4\nPS matching (ATT, 97% matched)\nATT\n1.065\n0.092\n1.193\n\n\n5\nAIPW (linear outcome, logit PS)\nATE\n0.989\n0.034\n1.000\n\n\n6\ncross-fit AIPW (gradient boosting, raw X)\nATE\n0.992\n0.039\n1.000\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nfig, ax = plt.subplots(figsize=(9, 4))\nr = results.iloc[::-1].reset_index(drop=True)\nax.errorbar(r.estimate, r.index, xerr=1.96 * r.se.fillna(0), fmt=\"o\", capsize=3)\nax.set_yticks(r.index, [f\"{m} [{e}]\" for m, e in zip(r.method, r.estimand)])\nax.axvline(TRUE_ATE, c=\"green\", ls=\":\", label=\"true ATE\"); ax.axvline(TRUE_ATT, c=\"purple\", ls=\":\", label=\"true ATT\")\nax.set(title=\"Estimates with 95% CIs\", xlabel=\"effect\"); ax.legend(); plt.show()\n\n\n\n\n\n\n\n\nFigure 5.3: Estimates with 95% confidence intervals against the true ATE and ATT.\n\n\n\n\n\n\n\n\n\n\n\nNoteATE vs ATT matters\n\n\n\nThe treated units have larger effects than average, so the ATT exceeds the ATE. Decide the estimand from the business question: “what did the program do for people who joined?” (ATT) vs “what if we enrolled everyone?” (ATE).",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#double-robustness-in-action",
+    "href": "05_propensity_scores.html#double-robustness-in-action",
+    "title": "5  Propensity-Score Methods",
+    "section": "5.4 Double robustness in action",
+    "text": "5.4 Double robustness in action\nDeliberately break one model at a time. IPW depends only on the propensity model, regression adjustment only on the outcome model — AIPW survives as long as one of them is right.\n\n\nCode\nX_bad = X.drop(columns=\"x1\")   # omits x1, the strongest confounder (drives both T and Y)\nX_good = X\n\ndef aipw_with(X_ps, X_out):\n    p = ps_lib.fit_propensity(X_ps, t)\n    a1 = LinearRegression().fit(X_out[t == 1], y[t == 1]); a0 = LinearRegression().fit(X_out[t == 0], y[t == 0])\n    return ps_lib.aipw(y, t, p, a0.predict(X_out), a1.predict(X_out)).estimate\n\npd.DataFrame([\n    {\"propensity model\": \"correct\", \"outcome model\": \"correct\", \"IPW\": ipw_ate(X_good, y, t), \"reg. adj.\": regression_adjustment(X_good, y, t), \"AIPW\": aipw_with(X_good, X_good)},\n    {\"propensity model\": \"correct\", \"outcome model\": \"wrong\", \"IPW\": ipw_ate(X_good, y, t), \"reg. adj.\": regression_adjustment(X_bad, y, t), \"AIPW\": aipw_with(X_good, X_bad)},\n    {\"propensity model\": \"wrong\", \"outcome model\": \"correct\", \"IPW\": ipw_ate(X_bad, y, t), \"reg. adj.\": regression_adjustment(X_good, y, t), \"AIPW\": aipw_with(X_bad, X_good)},\n    {\"propensity model\": \"wrong\", \"outcome model\": \"wrong\", \"IPW\": ipw_ate(X_bad, y, t), \"reg. adj.\": regression_adjustment(X_bad, y, t), \"AIPW\": aipw_with(X_bad, X_bad)},\n]).assign(truth=TRUE_ATE)\n\n\n\n\nTable 5.2: Double robustness: each estimator when the propensity model, the outcome model, both or neither is correct.\n\n\n\n\n\n\n\n\n\n\npropensity model\noutcome model\nIPW\nreg. adj.\nAIPW\ntruth\n\n\n\n\n0\ncorrect\ncorrect\n1.021\n0.980\n0.989\n1.0\n\n\n1\ncorrect\nwrong\n1.021\n2.397\n1.047\n1.0\n\n\n2\nwrong\ncorrect\n2.393\n0.980\n0.982\n1.0\n\n\n3\nwrong\nwrong\n2.393\n2.397\n2.400\n1.0\n\n\n\n\n\n\n\n\n\n\nIn Table 5.2, leaving the key confounder out of the propensity model breaks IPW but not AIPW (the outcome model rescues it); leaving it out of the outcome model breaks regression adjustment but not AIPW (the weights rescue it). Only when both are wrong does AIPW fail — double robustness is protection against one mistake, not two, and no model fixes a confounder you never measured.",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#practical-notes",
+    "href": "05_propensity_scores.html#practical-notes",
+    "title": "5  Propensity-Score Methods",
+    "section": "5.5 Practical notes",
+    "text": "5.5 Practical notes\n\nDesign before analysis: write down the causal graph; include pre-treatment confounders, exclude mediators and colliders (and instruments, which inflate variance and can amplify bias).\nOverlap first, then balance, then estimate. Report how many units were trimmed or unmatched — it changes the population the estimate describes.\nSensitivity analysis for unmeasured confounding: E-values (VanderWeele & Ding), Rosenbaum bounds, or omitted-variable-bias bounds (Cinelli & Hazlett’s sensemakr). “How strong would a hidden confounder need to be to explain this away?”\nPrefer doubly robust + cross-fitting when using ML models for nuisance functions.\nLibraries: DoWhy (graph-first workflow + refutation tests), EconML (DML, causal forests, heterogeneous effects), causalml, zEpid.",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "05_propensity_scores.html#check-your-understanding",
+    "href": "05_propensity_scores.html#check-your-understanding",
+    "title": "5  Propensity-Score Methods",
+    "section": "5.6 Check your understanding",
+    "text": "5.6 Check your understanding\n\n\n\n\n\n\nTipWhy judge a propensity model by balance rather than by AUC?\n\n\n\n\n\nThe model’s job is to balance covariates between the groups, not to predict treatment. A highly predictive model can mean poor overlap. Check that |SMD| falls below about 0.1 after weighting.\n\n\n\n\n\n\n\n\n\nTipWhat does double robustness guarantee, and what doesn’t it?\n\n\n\n\n\nAIPW is consistent if either the outcome model or the propensity model is correct. It fails when both are wrong, and it cannot fix a confounder you never measured.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nIn the double-robustness cell replace x1 with x2 in X_bad and re-render. Do IPW and regression adjustment still break, and what does that say about which covariates are true confounders?",
+    "crumbs": [
+      "Identification from cutoffs and covariates",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Propensity-Score Methods</span>"
+    ]
+  },
+  {
+    "objectID": "06_geo_experiments_and_switchbacks.html",
+    "href": "06_geo_experiments_and_switchbacks.html",
+    "title": "6  Geo Experiments and Switchback Testing",
+    "section": "",
+    "text": "6.1 Part A · Interference: a user-level A/B test in a supply-constrained marketplace\nUser-level A/B tests assume SUTVA1: one user’s treatment doesn’t affect another’s outcome. That breaks in:\nTwo standard fixes randomize at a coarser level so spillovers stay inside a unit of randomization:\nPart A shows why user-level tests mislead under interference. Part B designs and analyses a matched-pair geo experiment. Part C runs a switchback with carryover.\nUsers request orders; there are only 3,000 couriers-worth of capacity per day. A promo lifts treated users’ request rate from 20% to 26%. When demand exceeds supply, requests are filled at random — so treated users’ extra orders displace control users’ orders.\nCode\nrng = np.random.default_rng(0)\nN_USERS, CAPACITY, P_CTRL, P_TREAT, DAYS = 20_000, 3_000, 0.20, 0.26, 30\n\ndef simulate_day(treat_mask):\n    wants = rng.random(N_USERS) &lt; np.where(treat_mask, P_TREAT, P_CTRL)\n    requesters = np.flatnonzero(wants)\n    filled = np.zeros(N_USERS, bool)\n    filled[rng.choice(requesters, size=min(CAPACITY, len(requesters)), replace=False)] = True\n    return filled\n\nab_lift, global_t, global_c = [], [], []\nfor _ in range(DAYS):\n    half = rng.random(N_USERS) &lt; 0.5\n    f = simulate_day(half)\n    ab_lift.append(f[half].mean() / f[~half].mean() - 1)\n    global_t.append(simulate_day(np.ones(N_USERS, bool)).sum())\n    global_c.append(simulate_day(np.zeros(N_USERS, bool)).sum())\n\nprint(f\"User-level A/B estimate of order lift:      {np.mean(ab_lift):+.1%}\")\nprint(f\"True market-level effect (all-on vs all-off): {np.mean(global_t) / np.mean(global_c) - 1:+.1%}\")\n\n\nUser-level A/B estimate of order lift:      +31.4%\nTrue market-level effect (all-on vs all-off): +0.0%\nThe A/B test reports a ~30% lift that doesn’t exist at market level: the platform was supply-bound, so the promo only reshuffled who got served. Randomizing whole markets (Part B) or whole time periods (Part C) puts both “worlds” under the same capacity constraint and measures the real, global effect.",
+    "crumbs": [
+      "Designing experiments under interference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Geo Experiments and Switchback Testing</span>"
+    ]
+  },
+  {
+    "objectID": "06_geo_experiments_and_switchbacks.html#part-b-matched-pair-geo-experiment",
+    "href": "06_geo_experiments_and_switchbacks.html#part-b-matched-pair-geo-experiment",
+    "title": "6  Geo Experiments and Switchback Testing",
+    "section": "6.2 Part B · Matched-pair geo experiment",
+    "text": "6.2 Part B · Matched-pair geo experiment\nDesign. 40 geos with 90 days of pre-period history. Pair geos with similar pre-period volume, randomize one of each pair to treatment. Pairing on a strong predictor dramatically improves precision when you only have tens of units.\nAnalysis. Time-Based Regression (TBR; Kerman et al. (2017)): regress aggregate treatment-group sales on aggregate control-group sales during the pre-period, forecast the post-period counterfactual, and sum the difference. Complemented by randomization inference over the actual pair design.\n\nKerman, Jouni, Peng Wang, and Jon Vaver. 2017. Estimating Ad Effectiveness Using Geo Experiments in a Time-Based Regression Framework. Google.\n\n\nCode\nfrom causalsimkit import simulate, experiments\n\nTEST_START, TEST_END, TRUE_LIFT = 90, 120, 0.05\nbase = simulate.geo_markets(n_geos=40, n_days=TEST_END, seed=3)\npre_volume = base[base.day &lt; TEST_START].groupby(\"geo\")[\"sales\"].sum()\npairs = experiments.matched_pairs(pre_volume, seed=3)\ntreated_geos = set(pairs.loc[pairs.treated == 1, \"geo\"])\npairs.head(6)\n\n\n\n\nTable 6.2: First six rows of the matched-pair assignment.\n\n\n\n\n\n\n\n\n\n\ngeo\npair\ntreated\n\n\n\n\n0\ngeo_09\n0\n1\n\n\n1\ngeo_00\n0\n0\n\n\n2\ngeo_26\n1\n1\n\n\n3\ngeo_21\n1\n0\n\n\n4\ngeo_37\n2\n0\n\n\n5\ngeo_29\n2\n1\n\n\n\n\n\n\n\n\n\n\n\n6.2.1 Power check before launch: A/A backtests on history\nRun the full analysis many times on pre-period data only, with fresh random pair assignments and a fake test window where the true effect is zero. The spread of these placebo estimates is the noise floor; the minimum detectable effect (80% power, α = 0.10 two-sided) is roughly 2.5 × that SD.\n\n\nCode\nhist = base[base.day &lt; TEST_START]\naa = []\nfor s in range(200):\n    p = experiments.matched_pairs(pre_volume, seed=1000 + s)\n    _, summ = experiments.tbr(hist, set(p.loc[p.treated == 1, \"geo\"]), test_start=TEST_START - 30)\n    aa.append(summ[\"relative_lift\"])\naa = np.array(aa)\nprint(f\"A/A relative-lift SD: {aa.std():.2%}  -&gt;  approx. MDE (80% power, alpha=0.10): {2.5 * aa.std():.2%}\")\nprint(f\"A/A false-positive check: mean placebo lift {aa.mean():+.2%}\")\n\n\nA/A relative-lift SD: 1.29%  -&gt;  approx. MDE (80% power, alpha=0.10): 3.23%\nA/A false-positive check: mean placebo lift +0.19%\n\n\nThe planned 5% lift is above the MDE, so a 30-day test with 40 geos is adequately powered. (If it weren’t: add geos, lengthen the test, or improve the pairing — not hope.) Now apply the treatment and analyse.\n\n\nCode\ndf = simulate.apply_geo_lift(base, treated_geos, TEST_START, TRUE_LIFT)\ndaily, summary = experiments.tbr(df, treated_geos, TEST_START, alpha=0.10)\n\nagg = df.assign(group=np.where(df.geo.isin(treated_geos), \"treatment\", \"control\")) \\\n        .pivot_table(index=\"day\", columns=\"group\", values=\"sales\", aggfunc=\"sum\")\nfig, axes = plt.subplots(1, 2, figsize=(13, 4))\naxes[0].plot(agg.index, agg.treatment, label=\"treatment (actual)\")\naxes[0].plot(daily.index, daily.counterfactual, \"--\", label=\"TBR counterfactual\")\naxes[0].axvline(TEST_START - 0.5, c=\"grey\", ls=\"--\"); axes[0].set(title=\"Treatment group: actual vs counterfactual\", xlabel=\"day\"); axes[0].legend()\naxes[1].plot(daily.index, daily.cum_incremental, label=\"cumulative incremental sales\")\naxes[1].fill_between(daily.index, daily.cum_lower, daily.cum_upper, alpha=0.2, label=\"90% interval\")\naxes[1].axhline(0, c=\"k\", lw=0.8); axes[1].set(title=\"Cumulative effect\", xlabel=\"day\"); axes[1].legend()\nplt.show()\n{k: round(v, 4) for k, v in summary.items()} | {\"true_relative_lift\": TRUE_LIFT}\n\n\n\n\n\n\n\n\n\n\n\n(a) Time-based regression: actual versus counterfactual for the treatment group (left) and cumulative incremental sales with a 90% interval (right).\n\n\n\n\n\n\n\n{'cum_incremental': 67992.0866,\n 'lower': 56876.5416,\n 'upper': 79107.6317,\n 'relative_lift': 0.0455,\n 'pre_r2': 0.9635,\n 'true_relative_lift': 0.05}\n\n\n(b)\n\n\n\n\n\nFigure 6.1\n\n\n\n\n\n\nCode\n1stat = experiments.log_ratio_did(df, TEST_START)\n2ri = experiments.pair_randomization_test(pairs, stat, n_perm=2000, seed=0)\n\nfig, ax = plt.subplots()\nax.hist(ri[\"null\"], bins=50, color=\"grey\", alpha=0.7, label=\"re-randomized within pairs\")\nax.axvline(ri[\"observed\"], c=\"C3\", lw=2, label=f\"observed (p = {ri['p']:.4f})\")\nax.set(title=\"Randomization inference: log-ratio DiD\", xlabel=\"statistic\"); ax.legend(); plt.show()\nprint(f\"observed log-ratio DiD {ri['observed']:.4f}  ~= lift {np.expm1(ri['observed']):.2%}\")\n\n\n\n1\n\nThe statistic is the log ratio of treated to control sales, post versus pre. Its exponential minus one is the relative lift.\n\n2\n\nRe-randomize treatment within each pair 2,000 times to build the null distribution. The p-value comes from where the observed statistic falls in it.\n\n\n\n\n\n\n\n\n\n\nFigure 6.2: Randomization inference: the observed log-ratio DiD against its distribution under re-randomization within pairs.\n\n\n\n\n\nobserved log-ratio DiD 0.0381  ~= lift 3.89%\n\n\n\n\n\n\n\n\nTipGeo-experiment practicalities\n\n\n\n\nSpillover across borders: commuters and media markets leak. Use DMA-level geos, add buffer zones, or exclude border geos.\nHeterogeneous geo sizes: one huge market can dominate; pair or stratify on size and consider dropping outliers from randomization (keep them as always-control).\nPre-period fit: TBR assumes the treatment–control relationship is stable; inspect the pre-period R² and residuals. Synthetic control (Chapter 2) is the alternative when you can choose a few treated geos deliberately.\nCool-down: effects of media often persist; extend measurement past the test end to capture them.\nTools: Google’s GeoexperimentsResearch (TBR / GBR), matched_markets (Trimmed Match), Meta’s GeoLift (augmented SC with power analysis), tfcausalimpact.",
+    "crumbs": [
+      "Designing experiments under interference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Geo Experiments and Switchback Testing</span>"
+    ]
+  },
+  {
+    "objectID": "06_geo_experiments_and_switchbacks.html#part-c-switchback-test-with-carryover",
+    "href": "06_geo_experiments_and_switchbacks.html#part-c-switchback-test-with-carryover",
+    "title": "6  Geo Experiments and Switchback Testing",
+    "section": "6.3 Part C · Switchback test with carryover",
+    "text": "6.3 Part C · Switchback test with carryover\nRandomize treatment by time block in one market (e.g. a new dispatch algorithm on/off in 4-hour blocks for 8 weeks). Everyone in the market is in the same regime at the same time, so interference between users is contained.\nThe catch is carryover: supply repositions slowly, so the system takes a few hours to reach the new regime after each switch. Measured right after a switch, outcomes reflect partly the previous regime, biasing the estimate toward zero.\n\n\n\n\n\n\nNoteSimulated truth\n\n\n\nthe steady-state (always-on vs always-off) effect is +8 on an hourly metric; exposure adjusts with persistence 0.6 per hour.\n\n\n\n\nCode\nTRUE_SB_EFFECT, HOURS = 8.0, 24 * 56\n\ndef run_switchback(block_len, seed):\n    a = experiments.switchback_assignment(HOURS, block_len, seed=seed)\n    d = simulate.switchback_marketplace(a.assignment.to_numpy(), effect=TRUE_SB_EFFECT, persistence=0.6, seed=seed)\n    return pd.concat([d, a[[\"block\", \"since_switch\"]]], axis=1)\n\nsb = run_switchback(block_len=4, seed=1)\nfig, ax = plt.subplots(figsize=(11, 3.5))\nw = sb[sb.t &lt; 24 * 3]\nax.step(w.t, w.treated * TRUE_SB_EFFECT, where=\"post\", c=\"grey\", label=\"assignment (scaled)\")\nax.plot(w.t, w.exposure * TRUE_SB_EFFECT, c=\"C3\", label=\"effective treatment (with carryover)\")\nax.set(title=\"Carryover: the system lags behind the assignment\", xlabel=\"hour\"); ax.legend(); plt.show()\n\n\n\n\n\n\n\n\nFigure 6.3: Carryover in a switchback: the effective treatment lags behind the assignment.\n\n\n\n\n\n\n\nCode\nrows = []\nfor b in range(0, 4):\n    r = experiments.analyze_switchback(sb, burn_in=b)\n    rows.append({\"burn_in_hours\": b, \"estimate\": r[\"estimate\"], \"se\": r[\"se\"],\n                 \"ci_lower\": r[\"ci\"][0], \"ci_upper\": r[\"ci\"][1], \"hours_used\": r[\"n_used\"]})\npd.DataFrame(rows).set_index(\"burn_in_hours\").assign(truth=TRUE_SB_EFFECT)\n\n\n\n\nTable 6.3: Switchback estimates by burn-in length, against the true effect of 8.\n\n\n\n\n\n\n\n\n\n\nestimate\nse\nci_lower\nci_upper\nhours_used\ntruth\n\n\nburn_in_hours\n\n\n\n\n\n\n\n\n\n\n0\n5.720\n0.348\n5.035\n6.405\n1344\n8.0\n\n\n1\n6.564\n0.380\n5.817\n7.310\n1176\n8.0\n\n\n2\n7.335\n0.387\n6.572\n8.097\n1008\n8.0\n\n\n3\n8.019\n0.459\n7.117\n8.922\n840\n8.0\n\n\n\n\n\n\n\n\n\n\nDropping the first hours after each switch removes most of the carryover bias, at the cost of discarding data (wider CIs).\n\n6.3.1 Choosing the block length\nShort blocks give many randomization units (more precision against time-varying noise) but more switches (more carryover and more data burned). Long blocks have little carryover but few effective units — and blocks as long as a day become collinear with day fixed effects, leaving almost nothing to identify the effect. Simulate the trade-off with your own carryover estimate before launching:\n\n\nCode\nrows = []\nfor block_len in (1, 2, 4, 6, 8, 12):\n    for burn in (0, 2):\n        if burn &gt;= block_len:\n            continue\n        ests = [experiments.analyze_switchback(run_switchback(block_len, s), burn_in=burn)[\"estimate\"] for s in range(40)]\n        rows.append({\"block_len_h\": block_len, \"burn_in_h\": burn, \"bias\": np.mean(ests) - TRUE_SB_EFFECT,\n                     \"sd\": np.std(ests, ddof=1), \"rmse\": np.sqrt(np.mean((np.array(ests) - TRUE_SB_EFFECT) ** 2))})\ngrid = pd.DataFrame(rows)\n\nfig, ax = plt.subplots()\nfor burn, d in grid.groupby(\"burn_in_h\"):\n    ax.plot(d.block_len_h, d.rmse, \"o-\", label=f\"burn-in {burn}h\")\nax.set(xscale=\"log\", xticks=[1, 2, 4, 6, 8, 12], xticklabels=[1, 2, 4, 6, 8, 12],\n       title=\"Switchback design: RMSE vs block length (40 simulated tests each)\",\n       xlabel=\"block length (hours)\", ylabel=\"RMSE of effect estimate\"); ax.legend(); plt.show()\ngrid\n\n\n\n\n\n\n\n\n\n\n\n(a) Switchback design: RMSE of the effect estimate by block length, with and without burn-in.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nblock_len_h\nburn_in_h\nbias\nsd\nrmse\n\n\n\n\n0\n1\n0\n-4.972\n0.327\n4.983\n\n\n1\n2\n0\n-4.146\n0.348\n4.161\n\n\n2\n4\n0\n-3.030\n0.335\n3.048\n\n\n3\n4\n2\n-1.396\n0.380\n1.446\n\n\n4\n6\n0\n-2.374\n0.378\n2.404\n\n\n5\n6\n2\n-1.093\n0.417\n1.168\n\n\n6\n8\n0\n-2.037\n0.389\n2.073\n\n\n7\n8\n2\n-0.946\n0.423\n1.034\n\n\n8\n12\n0\n-1.446\n0.499\n1.528\n\n\n9\n12\n2\n-0.614\n0.463\n0.766\n\n\n\n\n\n\n\n(b)\n\n\n\n\n\nFigure 6.4\n\n\n\n\n\n\n\n\n\n\nTipSwitchback practicalities\n\n\n\n\nEstimate carryover first (e.g. from an earlier test or system dynamics) and set burn-in ≥ the time to reach a new steady state.\nBalance time-of-day/day-of-week: include hour and day fixed effects; consider stratified or regular switching schedules so each hour-of-day gets both arms.\nCluster by block (the unit of randomization) or use randomization inference — consecutive hours are strongly correlated.\nRegion × time switchbacks across several markets add units and let you include market fixed effects.\nNovelty/learning effects from users or drivers adapting to frequent switches can’t be fixed by burn-in; check whether the effect drifts over the test.\nReferences: Bojinov et al. (2023) on optimal switchback designs; DoorDash and Lyft engineering blogs on switchback practice.\n\n\n\n\nBojinov, Iavor, David Simchi-Levi, and Jinglong Zhao. 2023. “Design and Analysis of Switchback Experiments.” Management Science.",
+    "crumbs": [
+      "Designing experiments under interference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Geo Experiments and Switchback Testing</span>"
+    ]
+  },
+  {
+    "objectID": "06_geo_experiments_and_switchbacks.html#check-your-understanding",
+    "href": "06_geo_experiments_and_switchbacks.html#check-your-understanding",
+    "title": "6  Geo Experiments and Switchback Testing",
+    "section": "6.4 Check your understanding",
+    "text": "6.4 Check your understanding\n\n\n\n\n\n\nTipWhy does the user-level A/B test show a lift that doesn’t exist at market level?\n\n\n\n\n\nSupply is the constraint. Treated users’ extra requests displace control users’ orders, so the A/B comparison sees a gap that is only a reshuffling of who gets served. Interference breaks SUTVA.\n\n\n\n\n\n\n\n\n\nTipHow is the minimum detectable effect estimated before launch, and why?\n\n\n\n\n\nRun the full analysis many times on pre-period data with fresh random pairs and a fake test window. The spread of those placebo estimates is the noise floor, and the MDE is roughly 2.5 times their standard deviation at 80% power and α = 0.10.\n\n\n\n\n\n\n\n\n\nImportantTry it\n\n\n\nSet TRUE_LIFT below the MDE printed in the A/A check (for example 0.01) and re-render. Does the randomization test still detect the lift?",
+    "crumbs": [
+      "Designing experiments under interference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Geo Experiments and Switchback Testing</span>"
+    ]
+  },
+  {
+    "objectID": "references.html",
+    "href": "references.html",
+    "title": "References",
+    "section": "",
+    "text": "Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens,\nand Stefan Wager. 2021. “Synthetic\nDifference-in-Differences.” American Economic Review.\n\n\nBen-Michael, Eli, Avi Feller, and Jesse Rothstein. 2021. “The\nAugmented Synthetic Control Method.” Journal of the American\nStatistical Association.\n\n\nBertrand, Marianne, Esther Duflo, and Sendhil Mullainathan. 2004.\n“How Much Should We Trust Differences-in-Differences\nEstimates?” Quarterly Journal of Economics.\n\n\nBojinov, Iavor, David Simchi-Levi, and Jinglong Zhao. 2023.\n“Design and Analysis of Switchback Experiments.”\nManagement Science.\n\n\nCallaway, Brantly, and Pedro H. C. Sant’Anna. 2021.\n“Difference-in-Differences with Multiple Time Periods.”\nJournal of Econometrics.\n\n\nChaisemartin, Clément de, and Xavier D’Haultfœuille. 2020.\n“Two-Way Fixed Effects Estimators with Heterogeneous Treatment\nEffects.” American Economic Review.\n\n\nCrump, Richard K., V. Joseph Hotz, Guido W. Imbens, and Oscar A. Mitnik.\n2009. “Dealing with Limited Overlap in Estimation of Average\nTreatment Effects.” Biometrika.\n\n\nGelman, Andrew, and Guido Imbens. 2019. “Why High-Order\nPolynomials Should Not Be Used in Regression Discontinuity\nDesigns.” Journal of Business & Economic Statistics.\n\n\nGoodman-Bacon, Andrew. 2021. “Difference-in-Differences with\nVariation in Treatment Timing.” Journal of Econometrics.\n\n\nKerman, Jouni, Peng Wang, and Jon Vaver. 2017. Estimating Ad\nEffectiveness Using Geo Experiments in a Time-Based Regression\nFramework. Google.\n\n\nRambachan, Ashesh, and Jonathan Roth. 2023. “A More Credible\nApproach to Parallel Trends.” Review of Economic\nStudies.\n\n\nRosenbaum, Paul R., and Donald B. Rubin. 1983. “The Central Role\nof the Propensity Score in Observational Studies for Causal\nEffects.” Biometrika.\n\n\nRoth, Jonathan. 2022. “Pretest with Caution: Event-Study Estimates\nAfter Testing for Parallel Trends.” American Economic Review:\nInsights.\n\n\nSun, Liyang, and Sarah Abraham. 2021. “Estimating Dynamic\nTreatment Effects in Event Studies with Heterogeneous Treatment\nEffects.” Journal of Econometrics.",
+    "crumbs": [
+      "References"
+    ]
+  },
+  {
+    "objectID": "appendix_causalsimkit.html",
+    "href": "appendix_causalsimkit.html",
+    "title": "Appendix A — The causalsimkit package",
+    "section": "",
+    "text": "A.1 Setup\nThe estimators used in every chapter live in src/causalsimkit/, a small package with truth-recovery tests: each estimator must recover the effect planted in its simulated data.\nThe chapters also work without installing the package: _setup.qmd falls back to ./src on the path.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>The `causalsimkit` package</span>"
+    ]
+  },
+  {
+    "objectID": "appendix_causalsimkit.html#setup",
+    "href": "appendix_causalsimkit.html#setup",
+    "title": "Appendix A — The causalsimkit package",
+    "section": "",
+    "text": "uv sync --extra dev --extra render   # create .venv and install causalsimkit in editable mode\nuv run pytest -q                     # estimators must recover the planted effects\nuv run quarto render                 # build the book",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>The `causalsimkit` package</span>"
+    ]
+  },
+  {
+    "objectID": "appendix_causalsimkit.html#layout",
+    "href": "appendix_causalsimkit.html#layout",
+    "title": "Appendix A — The causalsimkit package",
+    "section": "A.2 Layout",
+    "text": "A.2 Layout\nsrc/causalsimkit/\n  ols.py          OLS/WLS with HC1 and cluster-robust (CR1) SEs, Wald tests\n  did.py          2x2, TWFE, event study, Callaway–Sant'Anna ATT(g,t)\n  synth.py        synthetic control, DiD counterfactual, placebos, backtests\n  events.py       market-model abnormal returns, CAR aggregation\n  rdd.py          local polynomial RD, binned means, density test\n  propensity.py   propensity fit, SMD balance, IPW, AIPW, cross-fit AIPW, matching\n  experiments.py  matched pairs, TBR, randomization inference, switchback design/analysis\n  simulate.py     data-generating processes with known ground truth\n  utils.py        cluster bootstrap\ntests/            truth-recovery tests for every estimator",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>The `causalsimkit` package</span>"
+    ]
+  },
+  {
+    "objectID": "appendix_causalsimkit.html#source-of-truth",
+    "href": "appendix_causalsimkit.html#source-of-truth",
+    "title": "Appendix A — The causalsimkit package",
+    "section": "A.3 Source of truth",
+    "text": "A.3 Source of truth\nThe chapters in this book replace the original Jupyter notebooks, which were generated from cell specs. The .qmd files are now the source: edit a chapter, re-render, and results update. Chapter results are cached in _freeze/; delete a chapter’s folder there (or the whole directory) to force a re-run.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>The `causalsimkit` package</span>"
+    ]
+  },
+  {
+    "objectID": "appendix_causalsimkit.html#production-libraries",
+    "href": "appendix_causalsimkit.html#production-libraries",
+    "title": "Appendix A — The causalsimkit package",
+    "section": "A.4 Production libraries",
+    "text": "A.4 Production libraries\n\n\n\nTable A.1: Mature libraries to cross-check against.\n\n\n\n\n\n\n\n\n\nNeed\nLibraries\n\n\n\n\nRD inference\nrdrobust, rddensity, rdlocrand\n\n\nStaggered DiD, fixed effects\npyfixest, csdid, differences, linearmodels\n\n\nSynthetic control\npysyncon, SparseSC, tfcausalimpact\n\n\nObservational causal inference\nDoWhy, EconML, causalml, zEpid\n\n\nGeo experiments\nGeoLift, matched_markets, GeoexperimentsResearch",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>The `causalsimkit` package</span>"
+    ]
+  }
+]

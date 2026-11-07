@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>3&nbsp; Event Studies – Causal Inference by Simulation</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./04_regression_discontinuity.html" rel="next">
+<link href="./02_synthetic_control.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating slimcontent quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01_difference_in_differences.html">Panel and time-series designs</a></li><li class="breadcrumb-item"><a href="./03_event_studies.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Causal Inference by Simulation</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Panel and time-series designs</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01_difference_in_differences.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Difference-in-Differences (DiD)</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02_synthetic_control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03_event_studies.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Identification from cutoffs and covariates</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04_regression_discontinuity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Regression Discontinuity Design (RDD)</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05_propensity_scores.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Propensity-Score Methods</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Designing experiments under interference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06_geo_experiments_and_switchbacks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Geo Experiments and Switchback Testing</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./appendix_causalsimkit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">The <code>causalsimkit</code> package</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#part-a-abnormal-returns-with-the-market-model" id="toc-part-a-abnormal-returns-with-the-market-model" class="nav-link active" data-scroll-target="#part-a-abnormal-returns-with-the-market-model"><span class="header-section-number">3.1</span> Part A · Abnormal returns with the market model</a></li>
+  <li><a href="#part-b-staggered-rollout-of-a-feature-across-markets" id="toc-part-b-staggered-rollout-of-a-feature-across-markets" class="nav-link" data-scroll-target="#part-b-staggered-rollout-of-a-feature-across-markets"><span class="header-section-number">3.2</span> Part B · Staggered rollout of a feature across markets</a></li>
+  <li><a href="#check-your-understanding" id="toc-check-your-understanding" class="nav-link" data-scroll-target="#check-your-understanding"><span class="header-section-number">3.3</span> Check your understanding</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01_difference_in_differences.html">Panel and time-series designs</a></li><li class="breadcrumb-item"><a href="./03_event_studies.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></a></li></ol></nav>
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span id="sec-event-studies" class="quarto-section-identifier"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Event Studies</span></span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="callout callout-style-default callout-tip callout-titled" title="Walkthrough summary">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Walkthrough summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This chapter covers two designs.</p>
+<p><strong>Part A, financial event study.</strong> Fit a market model on an estimation window before the event, then measure abnormal returns in the event window as realized minus predicted. Aggregate them into average and cumulative abnormal returns (CAR). A pre-event placebo window should show nothing. A significant value there points to leakage or a mis-dated event.</p>
+<p><strong>Part B, staggered rollout.</strong> Units adopt at different times. Naive two-way fixed effects is biased when effects differ across cohorts or grow over time. Already-treated units end up serving as controls for later adopters, and those controls are still moving because of treatment.</p>
+<p>The fix is Callaway and Sant’Anna. It estimates each cohort-by-period effect with a clean 2×2 comparison, then aggregates by event time. Static and dynamic TWFE both miss the truth, while the clean comparisons track it. Not-yet-treated units are often a good practical control group.</p>
+</div>
+</div>
+<p>“Event study” names two closely related designs:</p>
+<ul>
+<li><strong>Part A — Financial event study.</strong> Measure <em>abnormal</em> stock returns around an announcement (earnings, M&amp;A, product launch) relative to a market benchmark. The counterfactual is “what the stock would have returned given the market’s move”.</li>
+<li><strong>Part B — Panel event study with staggered rollout.</strong> Measure how a KPI evolves before/after a feature, policy or launch that reaches different units (markets, stores, user cohorts) at different times. This generalises DiD (<a href="01_difference_in_differences.html" class="quarto-xref"><span>Chapter 1</span></a>) and has a well-known pitfall: naive two-way fixed effects is biased when effects differ across cohorts or grow over time.</li>
+</ul>
+<p>Both share the same idea: align every unit on <strong>event time</strong> (time relative to its own event), and estimate effects per event-time period.</p>
+<div id="0978b097" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Setup: imports and plotting defaults</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Make `causalsimkit` importable whether or not you ran `uv sync` / `pip install -e .`</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>:</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> causalsimkit</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> <span class="pp">ImportError</span>:</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    sys.path.insert(<span class="dv">0</span>, <span class="bu">str</span>(Path.cwd().resolve() <span class="op">/</span> <span class="st">"src"</span>))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> causalsimkit</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>plt.rcParams.update({<span class="st">"figure.figsize"</span>: (<span class="dv">9</span>, <span class="dv">4</span>), <span class="st">"axes.spines.top"</span>: <span class="va">False</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"axes.spines.right"</span>: <span class="va">False</span>, <span class="st">"axes.grid"</span>: <span class="va">True</span>, <span class="st">"grid.alpha"</span>: <span class="fl">0.3</span>})</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.precision"</span>, <span class="dv">3</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.width"</span>, <span class="dv">140</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">"display.max_columns"</span>, <span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<section id="part-a-abnormal-returns-with-the-market-model" class="level2 page-columns page-full" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="part-a-abnormal-returns-with-the-market-model"><span class="header-section-number">3.1</span> Part A · Abnormal returns with the market model</h2>
+<p>For each firm <span class="math inline">\(i\)</span> with event day <span class="math inline">\(d_i\)</span>:</p>
+<ol type="1">
+<li><strong>Estimation window</strong> (here days −250 to −30): fit <span class="math inline">\(r_{it} = \alpha_i + \beta_i r_{mt} + \varepsilon_{it}\)</span>. The gap before the event keeps leakage/run-up out of the benchmark.</li>
+<li><strong>Event window</strong> (−5 to +10): abnormal return <span class="math inline">\(AR_{it} = r_{it} - (\hat\alpha_i + \hat\beta_i r_{mt})\)</span>.</li>
+<li>Aggregate: average AR by event day (AAR), cumulative AR (CAR<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>), and cross-sectional tests.</li>
+</ol>
+<div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup>&nbsp;CAR: cumulative abnormal return, the sum of a firm’s abnormal returns over a window. CAAR is its average across firms.</p></div></div><div class="callout callout-style-default callout-note callout-titled" title="Simulated truth">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Simulated truth
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>+2% on day 0 and +0.2%/day drift for 5 days, so <strong>true CAR[0,+5] = 3.0%</strong>.</p>
+</div>
+</div>
+<div class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> simulate, events</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>returns, market, event_day <span class="op">=</span> simulate.stock_returns(n_firms<span class="op">=</span><span class="dv">60</span>, event_jump<span class="op">=</span><span class="fl">0.02</span>, drift<span class="op">=</span><span class="fl">0.002</span>, drift_days<span class="op">=</span><span class="dv">5</span>, seed<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>ar <span class="op">=</span> events.market_model_abnormal_returns(returns, market, event_day,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>                                          estimation_window<span class="op">=</span>(<span class="op">-</span><span class="dv">250</span>, <span class="op">-</span><span class="dv">30</span>), event_window<span class="op">=</span>(<span class="op">-</span><span class="dv">5</span>, <span class="dv">10</span>))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>agg <span class="op">=</span> events.aggregate_abnormal_returns(ar)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>agg.head(<span class="dv">8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-event-aar" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="2">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-event-aar-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3.1: Average abnormal return (AAR) and its cumulative version (CAAR) by event day, first eight days.
+</figcaption>
+<div aria-describedby="tbl-event-aar-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="2">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">aar</th>
+<th data-quarto-table-cell-role="th">aar_se</th>
+<th data-quarto-table-cell-role="th">caar</th>
+<th data-quarto-table-cell-role="th">caar_se</th>
+<th data-quarto-table-cell-role="th">n</th>
+<th data-quarto-table-cell-role="th">aar_t</th>
+<th data-quarto-table-cell-role="th">caar_t</th>
+<th data-quarto-table-cell-role="th">caar_p</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">rel_day</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">-5</th>
+<td>-3.539e-04</td>
+<td>0.002</td>
+<td>-3.539e-04</td>
+<td>0.002</td>
+<td>60</td>
+<td>-0.182</td>
+<td>-0.182</td>
+<td>0.856</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">-4</th>
+<td>-1.008e-04</td>
+<td>0.002</td>
+<td>-4.547e-04</td>
+<td>0.003</td>
+<td>60</td>
+<td>-0.047</td>
+<td>-0.148</td>
+<td>0.883</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">-3</th>
+<td>-1.543e-03</td>
+<td>0.002</td>
+<td>-1.998e-03</td>
+<td>0.004</td>
+<td>60</td>
+<td>-0.826</td>
+<td>-0.525</td>
+<td>0.601</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">-2</th>
+<td>-1.339e-03</td>
+<td>0.003</td>
+<td>-3.337e-03</td>
+<td>0.005</td>
+<td>60</td>
+<td>-0.527</td>
+<td>-0.678</td>
+<td>0.501</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">-1</th>
+<td>6.017e-04</td>
+<td>0.002</td>
+<td>-2.735e-03</td>
+<td>0.005</td>
+<td>60</td>
+<td>0.359</td>
+<td>-0.501</td>
+<td>0.618</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1.548e-02</td>
+<td>0.002</td>
+<td>1.274e-02</td>
+<td>0.007</td>
+<td>60</td>
+<td>7.488</td>
+<td>1.922</td>
+<td>0.059</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2.826e-03</td>
+<td>0.002</td>
+<td>1.557e-02</td>
+<td>0.007</td>
+<td>60</td>
+<td>1.369</td>
+<td>2.248</td>
+<td>0.028</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">2</th>
+<td>2.287e-03</td>
+<td>0.002</td>
+<td>1.785e-02</td>
+<td>0.007</td>
+<td>60</td>
+<td>1.139</td>
+<td>2.577</td>
+<td>0.012</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div id="cell-fig-event-aar" class="cell" data-execution_count="3">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].bar(agg.index, agg.aar <span class="op">*</span> <span class="dv">100</span>, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> agg.aar_se <span class="op">*</span> <span class="dv">100</span>, capsize<span class="op">=</span><span class="dv">2</span>, color<span class="op">=</span><span class="st">"C0"</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Average abnormal return (AAR) by event day"</span>, xlabel<span class="op">=</span><span class="st">"days relative to event"</span>, ylabel<span class="op">=</span><span class="st">"%"</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].plot(agg.index, agg.caar <span class="op">*</span> <span class="dv">100</span>, <span class="st">"o-"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].fill_between(agg.index, (agg.caar <span class="op">-</span> <span class="fl">1.96</span> <span class="op">*</span> agg.caar_se) <span class="op">*</span> <span class="dv">100</span>, (agg.caar <span class="op">+</span> <span class="fl">1.96</span> <span class="op">*</span> agg.caar_se) <span class="op">*</span> <span class="dv">100</span>, alpha<span class="op">=</span><span class="fl">0.2</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Cumulative average abnormal return (CAAR)"</span>, xlabel<span class="op">=</span><span class="st">"days relative to event"</span>, ylabel<span class="op">=</span><span class="st">"%"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax <span class="kw">in</span> axes:</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    ax.axvline(<span class="op">-</span><span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)<span class="op">;</span> ax.axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-event-aar" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Left: bar chart of average abnormal return by event day, with a jump of about 2 percent on day 0. Right: line chart of cumulative return rising after day 0 with a shaded confidence band.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-event-aar-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="03_event_studies_files/figure-html/fig-event-aar-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;3.1: Average abnormal return by event day (left) and cumulative average abnormal return (right), with 95% intervals."><img src="03_event_studies_files/figure-html/fig-event-aar-output-1.png" alt="Left: bar chart of average abnormal return by event day, with a jump of about 2 percent on day 0. Right: line chart of cumulative return rising after day 0 with a shaded confidence band." width="1636" height="588" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-event-aar-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3.1: Average abnormal return by event day (left) and cumulative average abnormal return (right), with 95% intervals.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Report CARs over a few pre-specified windows. The pre-event window [−5,−1] is a placebo: a significant value there suggests leakage or a mis-dated event.</p>
+<div class="cell" data-execution_count="4">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy <span class="im">import</span> stats</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> car_test(start, end):</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    c <span class="op">=</span> events.car(ar, start, end)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> c.mean() <span class="op">/</span> c.sem()</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="st">"window"</span>: <span class="ss">f"[</span><span class="sc">{</span>start<span class="sc">:+d}</span><span class="ss">, </span><span class="sc">{</span>end<span class="sc">:+d}</span><span class="ss">]"</span>, <span class="st">"mean_CAR_%"</span>: <span class="dv">100</span> <span class="op">*</span> c.mean(), <span class="st">"t"</span>: t,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">"p"</span>: <span class="dv">2</span> <span class="op">*</span> stats.t.sf(<span class="bu">abs</span>(t), <span class="bu">len</span>(c) <span class="op">-</span> <span class="dv">1</span>), <span class="st">"share_positive"</span>: (c <span class="op">&gt;</span> <span class="dv">0</span>).mean()}</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>pd.DataFrame([car_test(<span class="op">-</span><span class="dv">5</span>, <span class="op">-</span><span class="dv">1</span>), car_test(<span class="dv">0</span>, <span class="dv">0</span>), car_test(<span class="dv">0</span>, <span class="dv">5</span>), car_test(<span class="dv">0</span>, <span class="dv">10</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-event-car" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="4">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-event-car-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3.2: Cumulative abnormal return (CAR) tests over pre-specified windows. The pre-event window [-5, -1] is a placebo.
+</figcaption>
+<div aria-describedby="tbl-event-car-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">window</th>
+<th data-quarto-table-cell-role="th">mean_CAR_%</th>
+<th data-quarto-table-cell-role="th">t</th>
+<th data-quarto-table-cell-role="th">p</th>
+<th data-quarto-table-cell-role="th">share_positive</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>[-5, -1]</td>
+<td>-0.274</td>
+<td>-0.501</td>
+<td>6.180e-01</td>
+<td>0.467</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>[+0, +0]</td>
+<td>1.548</td>
+<td>7.488</td>
+<td>4.029e-10</td>
+<td>0.883</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>[+0, +5]</td>
+<td>2.585</td>
+<td>5.404</td>
+<td>1.229e-06</td>
+<td>0.783</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>[+0, +10]</td>
+<td>1.838</td>
+<td>2.987</td>
+<td>4.103e-03</td>
+<td>0.583</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="Practical notes: financial event studies">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Practical notes: financial event studies
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><strong>Benchmarks:</strong> market model is the workhorse; Fama–French 3/5-factor or industry benchmarks matter for long windows or small caps.</li>
+<li><strong>Event-date clustering:</strong> if many firms share the same event date (e.g.&nbsp;a regulation), their ARs are cross-correlated and the cross-sectional t-test overstates precision — use portfolio/calendar-time approaches.</li>
+<li><strong>Event-induced variance:</strong> volatility often spikes on event days; the cross-sectional test used here is robust to that, as is the Boehmer–Musumeci–Poulsen (BMP) standardized test.</li>
+<li><strong>Confounding events:</strong> screen out firms with other news (earnings + M&amp;A on the same day) in the window.</li>
+<li><strong>Long horizons:</strong> CARs compound benchmark misspecification; prefer buy-and-hold abnormal returns with matched benchmarks or calendar-time portfolios.</li>
+</ul>
+</div>
+</div>
+</section>
+<section id="part-b-staggered-rollout-of-a-feature-across-markets" class="level2 page-columns page-full" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="part-b-staggered-rollout-of-a-feature-across-markets"><span class="header-section-number">3.2</span> Part B · Staggered rollout of a feature across markets</h2>
+<p>Units adopt in three cohorts (periods 6, 11, 16) plus a never-treated group. The effect differs by cohort (earlier adopters benefit more) and <strong>grows by 0.3 per period</strong> after adoption.</p>
+<p>Why TWFE breaks: with staggered timing, TWFE implicitly uses <em>already-treated</em> units as controls for later adopters. When effects grow over time, those “controls” are still changing because of treatment, contaminating the comparison <span class="citation" data-cites="goodmanbacon2021 dechaisemartin2020 sun2021">(<a href="references.html#ref-goodmanbacon2021" role="doc-biblioref">Goodman-Bacon 2021</a>; <a href="references.html#ref-dechaisemartin2020" role="doc-biblioref">Chaisemartin and D’Haultfœuille 2020</a>; <a href="references.html#ref-sun2021" role="doc-biblioref">Sun and Abraham 2021</a>)</span>.</p>
+<div class="no-row-height column-margin column-container"><div id="ref-goodmanbacon2021" class="csl-entry" role="listitem">
+Goodman-Bacon, Andrew. 2021. <span>“Difference-in-Differences with Variation in Treatment Timing.”</span> <em>Journal of Econometrics</em>.
+</div><div id="ref-dechaisemartin2020" class="csl-entry" role="listitem">
+Chaisemartin, Clément de, and Xavier D’Haultfœuille. 2020. <span>“Two-Way Fixed Effects Estimators with Heterogeneous Treatment Effects.”</span> <em>American Economic Review</em>.
+</div><div id="ref-sun2021" class="csl-entry" role="listitem">
+Sun, Liyang, and Sarah Abraham. 2021. <span>“Estimating Dynamic Treatment Effects in Event Studies with Heterogeneous Treatment Effects.”</span> <em>Journal of Econometrics</em>.
+</div><div id="ref-callaway2021" class="csl-entry" role="listitem">
+Callaway, Brantly, and Pedro H. C. Sant’Anna. 2021. <span>“Difference-in-Differences with Multiple Time Periods.”</span> <em>Journal of Econometrics</em>.
+</div></div><p>The fix used here is <strong>Callaway &amp; Sant’Anna</strong> <span class="citation" data-cites="callaway2021">(<a href="references.html#ref-callaway2021" role="doc-biblioref">2021</a>)</span>: estimate each cohort-by-period effect <span class="math inline">\(ATT(g,t)\)</span> with a clean 2×2 comparison (cohort <span class="math inline">\(g\)</span> vs never-treated, relative to period <span class="math inline">\(g-1\)</span>), then aggregate by event time.</p>
+<div id="cell-fig-staggered-cohorts" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> did</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit.utils <span class="im">import</span> cluster_bootstrap</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>panel <span class="op">=</span> simulate.staggered_panel(n_units<span class="op">=</span><span class="dv">120</span>, n_periods<span class="op">=</span><span class="dv">24</span>, cohorts<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">11</span>, <span class="dv">16</span>), growth<span class="op">=</span><span class="fl">0.3</span>, seed<span class="op">=</span><span class="dv">5</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>truth_by_e <span class="op">=</span> panel[panel.D <span class="op">==</span> <span class="dv">1</span>].groupby(<span class="st">"rel_time"</span>)[<span class="st">"true_te"</span>].mean()</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>true_overall <span class="op">=</span> panel.loc[panel.D <span class="op">==</span> <span class="dv">1</span>, <span class="st">"true_te"</span>].mean()</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> g, d <span class="kw">in</span> panel.groupby(<span class="st">"cohort"</span>):</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> d.groupby(<span class="st">"period"</span>)[<span class="st">"y"</span>].mean()</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    ax.plot(m.index, m, label<span class="op">=</span><span class="st">"never treated"</span> <span class="cf">if</span> g <span class="op">==</span> <span class="dv">0</span> <span class="cf">else</span> <span class="ss">f"cohort </span><span class="sc">{</span>g<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> g:</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        ax.axvline(g <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">":"</span>, c<span class="op">=</span>ax.lines[<span class="op">-</span><span class="dv">1</span>].get_color())</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(title<span class="op">=</span><span class="st">"KPI by adoption cohort"</span>, xlabel<span class="op">=</span><span class="st">"period"</span>, ylabel<span class="op">=</span><span class="st">"mean KPI"</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-staggered-cohorts" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Line chart of mean KPI by period for a never-treated group and three adoption cohorts, which diverge upward after their adoption periods.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-staggered-cohorts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="03_event_studies_files/figure-html/fig-staggered-cohorts-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Figure&nbsp;3.2: Mean KPI by adoption cohort. Dotted vertical lines mark each cohort’s adoption period."><img src="03_event_studies_files/figure-html/fig-staggered-cohorts-output-1.png" alt="Line chart of mean KPI by period for a never-treated group and three adoption cohorts, which diverge upward after their adoption periods." width="1147" height="588" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-staggered-cohorts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3.2: Mean KPI by adoption cohort. Dotted vertical lines mark each cohort’s adoption period.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-execution_count="6">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="annotated-cell-6"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-6-1"><a href="#annotated-cell-6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Static TWFE vs Callaway-Sant'Anna overall ATT</span></span>
+<span id="annotated-cell-6-2"><a href="#annotated-cell-6-2" aria-hidden="true" tabindex="-1"></a>twfe <span class="op">=</span> did.twfe_did(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"D"</span>)</span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="1">1</button><span id="annotated-cell-6-3" class="code-annotation-target"><a href="#annotated-cell-6-3" aria-hidden="true" tabindex="-1"></a>gt <span class="op">=</span> did.group_time_att(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>)</span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="2">2</button><span id="annotated-cell-6-4" class="code-annotation-target"><a href="#annotated-cell-6-4" aria-hidden="true" tabindex="-1"></a>cs_overall <span class="op">=</span> did.aggregate_overall(gt)</span>
+<span id="annotated-cell-6-5"><a href="#annotated-cell-6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-6"><a href="#annotated-cell-6-6" aria-hidden="true" tabindex="-1"></a>boot <span class="op">=</span> cluster_bootstrap(</span>
+<span id="annotated-cell-6-7"><a href="#annotated-cell-6-7" aria-hidden="true" tabindex="-1"></a>    panel, <span class="st">"unit"</span>,</span>
+<span id="annotated-cell-6-8"><a href="#annotated-cell-6-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">lambda</span> d: pd.concat([did.aggregate_event_time(did.group_time_att(d, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>)),</span>
+<span id="annotated-cell-6-9"><a href="#annotated-cell-6-9" aria-hidden="true" tabindex="-1"></a>                         pd.Series({<span class="st">"overall"</span>: did.aggregate_overall(did.group_time_att(d, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>))})]),</span>
+<span id="annotated-cell-6-10"><a href="#annotated-cell-6-10" aria-hidden="true" tabindex="-1"></a>    n_boot<span class="op">=</span><span class="dv">150</span>, seed<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="annotated-cell-6-11"><a href="#annotated-cell-6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-12"><a href="#annotated-cell-6-12" aria-hidden="true" tabindex="-1"></a>pd.DataFrame({</span>
+<span id="annotated-cell-6-13"><a href="#annotated-cell-6-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"estimate"</span>: [twfe.params[<span class="st">"D"</span>], cs_overall],</span>
+<span id="annotated-cell-6-14"><a href="#annotated-cell-6-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"se"</span>: [twfe.bse[<span class="st">"D"</span>], boot[<span class="st">"overall"</span>].std()],</span>
+<span id="annotated-cell-6-15"><a href="#annotated-cell-6-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"truth (avg effect over treated cells)"</span>: [true_overall] <span class="op">*</span> <span class="dv">2</span>,</span>
+<span id="annotated-cell-6-16"><a href="#annotated-cell-6-16" aria-hidden="true" tabindex="-1"></a>}, index<span class="op">=</span>[<span class="st">"static TWFE"</span>, <span class="st">"Callaway-Sant'Anna"</span>])</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-annotation">
+<dl class="code-annotation-container-hidden code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-6" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-cell="annotated-cell-6" data-code-lines="3" data-code-annotation="1">Callaway–Sant’Anna ATT(g, t): for each cohort <code>g</code> and period <code>t</code>, compare the cohort’s change since period g−1 with the change among never-treated units. Pre-period cells are placebo estimates and should be near 0.</span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-cell="annotated-cell-6" data-code-lines="4" data-code-annotation="2">The overall ATT averages the post-treatment cells, weighted by the number of units in each cell.</span>
+</dd>
+</dl>
+</div>
+<div id="tbl-staggered-overall" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="6">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-staggered-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3.3: Static TWFE versus Callaway–Sant’Anna overall ATT, with the true average effect.
+</figcaption>
+<div aria-describedby="tbl-staggered-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output cell-output-display" data-execution_count="6">
+<div>
+
+
+<table class="dataframe cell caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">estimate</th>
+<th data-quarto-table-cell-role="th">se</th>
+<th data-quarto-table-cell-role="th">truth (avg effect over treated cells)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">static TWFE</th>
+<td>2.811</td>
+<td>0.156</td>
+<td>4.249</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Callaway-Sant'Anna</th>
+<td>4.306</td>
+<td>0.176</td>
+<td>4.249</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div id="cell-fig-staggered-event-study" class="cell" data-execution_count="7">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>es_tab, _ <span class="op">=</span> did.event_study(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"rel_time"</span>, window<span class="op">=</span>(<span class="op">-</span><span class="dv">5</span>, <span class="dv">7</span>))</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>cs_e <span class="op">=</span> did.aggregate_event_time(gt).loc[<span class="op">-</span><span class="dv">5</span>:<span class="dv">7</span>]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>cs_se <span class="op">=</span> boot[[c <span class="cf">for</span> c <span class="kw">in</span> boot.columns <span class="cf">if</span> c <span class="op">!=</span> <span class="st">"overall"</span>]].std().loc[<span class="op">-</span><span class="dv">5</span>:<span class="dv">7</span>]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">4.5</span>))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>ax.plot(truth_by_e.loc[:<span class="dv">7</span>].index, truth_by_e.loc[:<span class="dv">7</span>], <span class="st">"k-"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"truth"</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>ax.errorbar(es_tab.rel_time <span class="op">-</span> <span class="fl">0.12</span>, es_tab.coef, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> es_tab.se, fmt<span class="op">=</span><span class="st">"s"</span>, capsize<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"dynamic TWFE"</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>ax.errorbar(cs_e.index <span class="op">+</span> <span class="fl">0.12</span>, cs_e, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> cs_se, fmt<span class="op">=</span><span class="st">"o"</span>, capsize<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Callaway-Sant'Anna"</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)<span class="op">;</span> ax.axvline(<span class="op">-</span><span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Event-study estimates vs truth"</span>, xlabel<span class="op">=</span><span class="st">"periods relative to adoption"</span>, ylabel<span class="op">=</span><span class="st">"effect on KPI"</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-staggered-event-study" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Plot of effect against periods relative to adoption. A black truth line rises with event time; Callaway–Sant'Anna points track it closely while dynamic TWFE points deviate at the window endpoints.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-staggered-event-study-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="03_event_studies_files/figure-html/fig-staggered-event-study-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Figure&nbsp;3.3: Event-study estimates from dynamic TWFE and Callaway–Sant’Anna against the true effect by event time."><img src="03_event_studies_files/figure-html/fig-staggered-event-study-output-1.png" alt="Plot of effect against periods relative to adoption. A black truth line rises with event time; Callaway–Sant'Anna points track it closely while dynamic TWFE points deviate at the window endpoints." width="1250" height="646" class="figure-img"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-staggered-event-study-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3.3: Event-study estimates from dynamic TWFE and Callaway–Sant’Anna against the true effect by event time.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In <a href="#fig-staggered-event-study" class="quarto-xref">Figure&nbsp;<span>3.3</span></a> and <a href="#tbl-staggered-overall" class="quarto-xref">Table&nbsp;<span>3.3</span></a>, static TWFE understates the average effect: later periods for early adopters get absorbed as “control” variation. The dynamic TWFE event study does better in the middle of the window (a large never-treated group helps), but look at the binned endpoints (−5 and +7): they pool many heterogeneous periods and come out biased, and the spurious −5 lead could be misread as a pre-trend. More generally, Sun &amp; Abraham show TWFE lead/lag coefficients mix in effects from other periods whenever effects are heterogeneous across cohorts. Callaway–Sant’Anna tracks the truth because every comparison is a clean 2×2.</p>
+<p>Pre-period CS estimates (negative event times) are placebo tests of parallel trends for each cohort.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Practical notes: rollout event studies">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Practical notes: rollout event studies
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li>Prefer <strong>heterogeneity-robust estimators</strong>: Callaway–Sant’Anna, Sun–Abraham (interaction-weighted), Borusyak–Jaravel–Spiess imputation, or stacked DiD.</li>
+<li>Use <strong>not-yet-treated</strong> units as controls when there is no never-treated group (and sometimes even when there is — they’re often more comparable).</li>
+<li>Rollout order is rarely random: if markets with the best expected gains go first, cohorts differ systematically. Check pre-trends <strong>by cohort</strong>.</li>
+<li>Event-time estimates far from zero are identified from fewer cohorts — show cohort composition or trim the window.</li>
+<li>Libraries: <code>csdid</code> (Python port of R <code>did</code>), <code>differences</code>, <code>pyfixest</code> (<code>did2s</code>, saturated event studies), <code>linearmodels</code>.</li>
+</ul>
+</div>
+</div>
+</section>
+<section id="check-your-understanding" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="check-your-understanding"><span class="header-section-number">3.3</span> Check your understanding</h2>
+<div class="callout callout-style-default callout-tip callout-titled" title="Why does static TWFE go wrong with staggered adoption?">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Why does static TWFE go wrong with staggered adoption?
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Already-treated units serve as controls for later adopters. When effects grow over time, those controls are still changing because of treatment, which contaminates the comparison.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="What does the pre-event window [−5, −1] tell you in the financial event study?">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>What does the pre-event window [−5, −1] tell you in the financial event study?
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>It is a placebo window. A significant abnormal return there points to information leakage or a mis-dated event.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-important callout-titled" title="Try it">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Try it
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>In the staggered-panel cell set <code>growth=0.0</code> and re-render. How much of the gap between static TWFE and Callaway–Sant’Anna remains once effects no longer grow?</p>
+</div>
+</div>
+
+
+<!-- -->
+
+
+</section>
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        const annoteTargets = window.document.querySelectorAll('.code-annotation-anchor');
+        for (let i=0; i<annoteTargets.length; i++) {
+          const annoteTarget = annoteTargets[i];
+          const targetCell = annoteTarget.getAttribute("data-target-cell");
+          const targetAnnotation = annoteTarget.getAttribute("data-target-annotation");
+          const contentFn = () => {
+            const content = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+            if (content) {
+              const tipContent = content.cloneNode(true);
+              tipContent.classList.add("code-annotation-tip-content");
+              return tipContent.outerHTML;
+            }
+          }
+          const config = {
+            allowHTML: true,
+            content: contentFn,
+            onShow: (instance) => {
+              selectCodeLines(instance.reference);
+              instance.reference.classList.add('code-annotation-active');
+              window.tippy.hideAll();
+            },
+            onHide: (instance) => {
+              unselectCodeLines();
+              instance.reference.classList.remove('code-annotation-active');
+            },
+            maxWidth: 300,
+            delay: [50, 0],
+            duration: [200, 0],
+            offset: [5, 10],
+            arrow: true,
+            appendTo: function(el) {
+              return el.parentElement.parentElement.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'quarto',
+            placement: 'right',
+            popperOptions: {
+              modifiers: [
+              {
+                name: 'flip',
+                options: {
+                  flipVariations: false, // true by default
+                  allowedAutoPlacements: ['right'],
+                  fallbackPlacements: ['right', 'top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end', 'left'],
+                },
+              },
+              {
+                name: 'preventOverflow',
+                options: {
+                  mainAxis: false,
+                  altAxis: false
+                }
+              }
+              ]        
+            }      
+          };
+          window.tippy(annoteTarget, config); 
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./02_synthetic_control.html" class="pagination-link" aria-label="Synthetic Control, and Choosing Between SC and DiD">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Synthetic Control, and Choosing Between SC and DiD</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./04_regression_discontinuity.html" class="pagination-link" aria-label="Regression Discontinuity Design (RDD)">
+        <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Regression Discontinuity Design (RDD)</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># Event Studies {#sec-event-studies}</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Walkthrough summary"}</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>This chapter covers two designs.</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>**Part A, financial event study.** Fit a market model on an estimation window before the event, then measure abnormal returns in the event window as realized minus predicted. Aggregate them into average and cumulative abnormal returns (CAR). A pre-event placebo window should show nothing. A significant value there points to leakage or a mis-dated event.</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>**Part B, staggered rollout.** Units adopt at different times. Naive two-way fixed effects is biased when effects differ across cohorts or grow over time. Already-treated units end up serving as controls for later adopters, and those controls are still moving because of treatment.</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>The fix is Callaway and Sant'Anna. It estimates each cohort-by-period effect with a clean 2×2 comparison, then aggregates by event time. Static and dynamic TWFE both miss the truth, while the clean comparisons track it. Not-yet-treated units are often a good practical control group.</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>"Event study" names two closely related designs:</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Part A — Financial event study.** Measure *abnormal* stock returns around an announcement (earnings, M&amp;A, product launch) relative to a market benchmark. The counterfactual is "what the stock would have returned given the market's move".</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Part B — Panel event study with staggered rollout.** Measure how a KPI evolves before/after a feature, policy or launch that reaches different units (markets, stores, user cohorts) at different times. This generalises DiD (@sec-did) and has a well-known pitfall: naive two-way fixed effects is biased when effects differ across cohorts or grow over time.</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>Both share the same idea: align every unit on **event time** (time relative to its own event), and estimate effects per event-time period.</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>{{&lt; include _setup.qmd &gt;}}</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="fu">## Part A · Abnormal returns with the market model</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>For each firm $i$ with event day $d_i$:</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Estimation window** (here days −250 to −30): fit $r_{it} = \alpha_i + \beta_i r_{mt} + \varepsilon_{it}$. The gap before the event keeps leakage/run-up out of the benchmark.</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Event window** (−5 to +10): abnormal return $AR_{it} = r_{it} - (\hat\alpha_i + \hat\beta_i r_{mt})$.</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Aggregate: average AR by event day (AAR), cumulative AR (CAR<span class="ot">[^car]</span>), and cross-sectional tests.</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>::: {.callout-note title="Simulated truth"}</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>+2% on day 0 and +0.2%/day drift for 5 days, so **true CAR[0,+5] = 3.0%**.</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-event-aar</span></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Average abnormal return (AAR) and its cumulative version (CAAR) by event day, first eight days."</span></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> simulate, events</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>returns, market, event_day <span class="op">=</span> simulate.stock_returns(n_firms<span class="op">=</span><span class="dv">60</span>, event_jump<span class="op">=</span><span class="fl">0.02</span>, drift<span class="op">=</span><span class="fl">0.002</span>, drift_days<span class="op">=</span><span class="dv">5</span>, seed<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>ar <span class="op">=</span> events.market_model_abnormal_returns(returns, market, event_day,</span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>                                          estimation_window<span class="op">=</span>(<span class="op">-</span><span class="dv">250</span>, <span class="op">-</span><span class="dv">30</span>), event_window<span class="op">=</span>(<span class="op">-</span><span class="dv">5</span>, <span class="dv">10</span>))</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>agg <span class="op">=</span> events.aggregate_abnormal_returns(ar)</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>agg.head(<span class="dv">8</span>)</span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-event-aar</span></span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "Average abnormal return by event day (left) and cumulative average abnormal return (right), with 95% intervals."</span></span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Left: bar chart of average abnormal return by event day, with a jump of about 2 percent on day 0. Right: line chart of cumulative return rising after day 0 with a shaded confidence band."</span></span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">13</span>, <span class="dv">4</span>))</span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].bar(agg.index, agg.aar <span class="op">*</span> <span class="dv">100</span>, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> agg.aar_se <span class="op">*</span> <span class="dv">100</span>, capsize<span class="op">=</span><span class="dv">2</span>, color<span class="op">=</span><span class="st">"C0"</span>)</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Average abnormal return (AAR) by event day"</span>, xlabel<span class="op">=</span><span class="st">"days relative to event"</span>, ylabel<span class="op">=</span><span class="st">"%"</span>)</span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].plot(agg.index, agg.caar <span class="op">*</span> <span class="dv">100</span>, <span class="st">"o-"</span>)</span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].fill_between(agg.index, (agg.caar <span class="op">-</span> <span class="fl">1.96</span> <span class="op">*</span> agg.caar_se) <span class="op">*</span> <span class="dv">100</span>, (agg.caar <span class="op">+</span> <span class="fl">1.96</span> <span class="op">*</span> agg.caar_se) <span class="op">*</span> <span class="dv">100</span>, alpha<span class="op">=</span><span class="fl">0.2</span>)</span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Cumulative average abnormal return (CAAR)"</span>, xlabel<span class="op">=</span><span class="st">"days relative to event"</span>, ylabel<span class="op">=</span><span class="st">"%"</span>)</span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax <span class="kw">in</span> axes:</span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>    ax.axvline(<span class="op">-</span><span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)<span class="op">;</span> ax.axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a>Report CARs over a few pre-specified windows. The pre-event window <span class="co">[</span><span class="ot">−5,−1</span><span class="co">]</span> is a placebo: a significant value there suggests leakage or a mis-dated event.</span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-event-car</span></span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Cumulative abnormal return (CAR) tests over pre-specified windows. The pre-event window [-5, -1] is a placebo."</span></span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy <span class="im">import</span> stats</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> car_test(start, end):</span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>    c <span class="op">=</span> events.car(ar, start, end)</span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> c.mean() <span class="op">/</span> c.sem()</span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="st">"window"</span>: <span class="ss">f"[</span><span class="sc">{</span>start<span class="sc">:+d}</span><span class="ss">, </span><span class="sc">{</span>end<span class="sc">:+d}</span><span class="ss">]"</span>, <span class="st">"mean_CAR_%"</span>: <span class="dv">100</span> <span class="op">*</span> c.mean(), <span class="st">"t"</span>: t,</span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a>            <span class="st">"p"</span>: <span class="dv">2</span> <span class="op">*</span> stats.t.sf(<span class="bu">abs</span>(t), <span class="bu">len</span>(c) <span class="op">-</span> <span class="dv">1</span>), <span class="st">"share_positive"</span>: (c <span class="op">&gt;</span> <span class="dv">0</span>).mean()}</span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a>pd.DataFrame([car_test(<span class="op">-</span><span class="dv">5</span>, <span class="op">-</span><span class="dv">1</span>), car_test(<span class="dv">0</span>, <span class="dv">0</span>), car_test(<span class="dv">0</span>, <span class="dv">5</span>), car_test(<span class="dv">0</span>, <span class="dv">10</span>)])</span>
+<span id="cb7-82"><a href="#cb7-82" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-83"><a href="#cb7-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Practical notes: financial event studies"}</span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Benchmarks:** market model is the workhorse; Fama–French 3/5-factor or industry benchmarks matter for long windows or small caps.</span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Event-date clustering:** if many firms share the same event date (e.g. a regulation), their ARs are cross-correlated and the cross-sectional t-test overstates precision — use portfolio/calendar-time approaches.</span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Event-induced variance:** volatility often spikes on event days; the cross-sectional test used here is robust to that, as is the Boehmer–Musumeci–Poulsen (BMP) standardized test.</span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Confounding events:** screen out firms with other news (earnings + M&amp;A on the same day) in the window.</span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Long horizons:** CARs compound benchmark misspecification; prefer buy-and-hold abnormal returns with matched benchmarks or calendar-time portfolios.</span>
+<span id="cb7-90"><a href="#cb7-90" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-91"><a href="#cb7-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-92"><a href="#cb7-92" aria-hidden="true" tabindex="-1"></a><span class="fu">## Part B · Staggered rollout of a feature across markets</span></span>
+<span id="cb7-93"><a href="#cb7-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-94"><a href="#cb7-94" aria-hidden="true" tabindex="-1"></a>Units adopt in three cohorts (periods 6, 11, 16) plus a never-treated group. The effect differs by cohort (earlier adopters benefit more) and **grows by 0.3 per period** after adoption.</span>
+<span id="cb7-95"><a href="#cb7-95" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-96"><a href="#cb7-96" aria-hidden="true" tabindex="-1"></a>Why TWFE breaks: with staggered timing, TWFE implicitly uses *already-treated* units as controls for later adopters. When effects grow over time, those "controls" are still changing because of treatment, contaminating the comparison <span class="co">[</span><span class="ot">@goodmanbacon2021; @dechaisemartin2020; @sun2021</span><span class="co">]</span>.</span>
+<span id="cb7-97"><a href="#cb7-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-98"><a href="#cb7-98" aria-hidden="true" tabindex="-1"></a>The fix used here is **Callaway &amp; Sant'Anna** <span class="co">[</span><span class="ot">-@callaway2021</span><span class="co">]</span>: estimate each cohort-by-period effect $ATT(g,t)$ with a clean 2×2 comparison (cohort $g$ vs never-treated, relative to period $g-1$), then aggregate by event time.</span>
+<span id="cb7-99"><a href="#cb7-99" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-102"><a href="#cb7-102" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-103"><a href="#cb7-103" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-staggered-cohorts</span></span>
+<span id="cb7-104"><a href="#cb7-104" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "Mean KPI by adoption cohort. Dotted vertical lines mark each cohort's adoption period."</span></span>
+<span id="cb7-105"><a href="#cb7-105" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Line chart of mean KPI by period for a never-treated group and three adoption cohorts, which diverge upward after their adoption periods."</span></span>
+<span id="cb7-106"><a href="#cb7-106" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit <span class="im">import</span> did</span>
+<span id="cb7-107"><a href="#cb7-107" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> causalsimkit.utils <span class="im">import</span> cluster_bootstrap</span>
+<span id="cb7-108"><a href="#cb7-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-109"><a href="#cb7-109" aria-hidden="true" tabindex="-1"></a>panel <span class="op">=</span> simulate.staggered_panel(n_units<span class="op">=</span><span class="dv">120</span>, n_periods<span class="op">=</span><span class="dv">24</span>, cohorts<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">11</span>, <span class="dv">16</span>), growth<span class="op">=</span><span class="fl">0.3</span>, seed<span class="op">=</span><span class="dv">5</span>)</span>
+<span id="cb7-110"><a href="#cb7-110" aria-hidden="true" tabindex="-1"></a>truth_by_e <span class="op">=</span> panel[panel.D <span class="op">==</span> <span class="dv">1</span>].groupby(<span class="st">"rel_time"</span>)[<span class="st">"true_te"</span>].mean()</span>
+<span id="cb7-111"><a href="#cb7-111" aria-hidden="true" tabindex="-1"></a>true_overall <span class="op">=</span> panel.loc[panel.D <span class="op">==</span> <span class="dv">1</span>, <span class="st">"true_te"</span>].mean()</span>
+<span id="cb7-112"><a href="#cb7-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-113"><a href="#cb7-113" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb7-114"><a href="#cb7-114" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> g, d <span class="kw">in</span> panel.groupby(<span class="st">"cohort"</span>):</span>
+<span id="cb7-115"><a href="#cb7-115" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> d.groupby(<span class="st">"period"</span>)[<span class="st">"y"</span>].mean()</span>
+<span id="cb7-116"><a href="#cb7-116" aria-hidden="true" tabindex="-1"></a>    ax.plot(m.index, m, label<span class="op">=</span><span class="st">"never treated"</span> <span class="cf">if</span> g <span class="op">==</span> <span class="dv">0</span> <span class="cf">else</span> <span class="ss">f"cohort </span><span class="sc">{</span>g<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb7-117"><a href="#cb7-117" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> g:</span>
+<span id="cb7-118"><a href="#cb7-118" aria-hidden="true" tabindex="-1"></a>        ax.axvline(g <span class="op">-</span> <span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">":"</span>, c<span class="op">=</span>ax.lines[<span class="op">-</span><span class="dv">1</span>].get_color())</span>
+<span id="cb7-119"><a href="#cb7-119" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(title<span class="op">=</span><span class="st">"KPI by adoption cohort"</span>, xlabel<span class="op">=</span><span class="st">"period"</span>, ylabel<span class="op">=</span><span class="st">"mean KPI"</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> plt.show()</span>
+<span id="cb7-120"><a href="#cb7-120" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-121"><a href="#cb7-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-124"><a href="#cb7-124" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-125"><a href="#cb7-125" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-staggered-overall</span></span>
+<span id="cb7-126"><a href="#cb7-126" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Static TWFE versus Callaway–Sant'Anna overall ATT, with the true average effect."</span></span>
+<span id="cb7-127"><a href="#cb7-127" aria-hidden="true" tabindex="-1"></a><span class="co"># Static TWFE vs Callaway-Sant'Anna overall ATT</span></span>
+<span id="cb7-128"><a href="#cb7-128" aria-hidden="true" tabindex="-1"></a>twfe <span class="op">=</span> did.twfe_did(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"D"</span>)</span>
+<span id="cb7-129"><a href="#cb7-129" aria-hidden="true" tabindex="-1"></a>gt <span class="op">=</span> did.group_time_att(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>)  <span class="co"># &lt;1&gt;</span></span>
+<span id="cb7-130"><a href="#cb7-130" aria-hidden="true" tabindex="-1"></a>cs_overall <span class="op">=</span> did.aggregate_overall(gt)  <span class="co"># &lt;2&gt;</span></span>
+<span id="cb7-131"><a href="#cb7-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-132"><a href="#cb7-132" aria-hidden="true" tabindex="-1"></a>boot <span class="op">=</span> cluster_bootstrap(</span>
+<span id="cb7-133"><a href="#cb7-133" aria-hidden="true" tabindex="-1"></a>    panel, <span class="st">"unit"</span>,</span>
+<span id="cb7-134"><a href="#cb7-134" aria-hidden="true" tabindex="-1"></a>    <span class="kw">lambda</span> d: pd.concat([did.aggregate_event_time(did.group_time_att(d, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>)),</span>
+<span id="cb7-135"><a href="#cb7-135" aria-hidden="true" tabindex="-1"></a>                         pd.Series({<span class="st">"overall"</span>: did.aggregate_overall(did.group_time_att(d, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"cohort"</span>))})]),</span>
+<span id="cb7-136"><a href="#cb7-136" aria-hidden="true" tabindex="-1"></a>    n_boot<span class="op">=</span><span class="dv">150</span>, seed<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb7-137"><a href="#cb7-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-138"><a href="#cb7-138" aria-hidden="true" tabindex="-1"></a>pd.DataFrame({</span>
+<span id="cb7-139"><a href="#cb7-139" aria-hidden="true" tabindex="-1"></a>    <span class="st">"estimate"</span>: [twfe.params[<span class="st">"D"</span>], cs_overall],</span>
+<span id="cb7-140"><a href="#cb7-140" aria-hidden="true" tabindex="-1"></a>    <span class="st">"se"</span>: [twfe.bse[<span class="st">"D"</span>], boot[<span class="st">"overall"</span>].std()],</span>
+<span id="cb7-141"><a href="#cb7-141" aria-hidden="true" tabindex="-1"></a>    <span class="st">"truth (avg effect over treated cells)"</span>: [true_overall] <span class="op">*</span> <span class="dv">2</span>,</span>
+<span id="cb7-142"><a href="#cb7-142" aria-hidden="true" tabindex="-1"></a>}, index<span class="op">=</span>[<span class="st">"static TWFE"</span>, <span class="st">"Callaway-Sant'Anna"</span>])</span>
+<span id="cb7-143"><a href="#cb7-143" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-144"><a href="#cb7-144" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-145"><a href="#cb7-145" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Callaway–Sant'Anna ATT(g, t): for each cohort <span class="in">`g`</span> and period <span class="in">`t`</span>, compare the cohort's change since period g−1 with the change among never-treated units. Pre-period cells are placebo estimates and should be near 0.</span>
+<span id="cb7-146"><a href="#cb7-146" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>The overall ATT averages the post-treatment cells, weighted by the number of units in each cell.</span>
+<span id="cb7-147"><a href="#cb7-147" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-150"><a href="#cb7-150" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb7-151"><a href="#cb7-151" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-staggered-event-study</span></span>
+<span id="cb7-152"><a href="#cb7-152" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: "Event-study estimates from dynamic TWFE and Callaway–Sant'Anna against the true effect by event time."</span></span>
+<span id="cb7-153"><a href="#cb7-153" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-alt: "Plot of effect against periods relative to adoption. A black truth line rises with event time; Callaway–Sant'Anna points track it closely while dynamic TWFE points deviate at the window endpoints."</span></span>
+<span id="cb7-154"><a href="#cb7-154" aria-hidden="true" tabindex="-1"></a>es_tab, _ <span class="op">=</span> did.event_study(panel, <span class="st">"y"</span>, <span class="st">"unit"</span>, <span class="st">"period"</span>, <span class="st">"rel_time"</span>, window<span class="op">=</span>(<span class="op">-</span><span class="dv">5</span>, <span class="dv">7</span>))</span>
+<span id="cb7-155"><a href="#cb7-155" aria-hidden="true" tabindex="-1"></a>cs_e <span class="op">=</span> did.aggregate_event_time(gt).loc[<span class="op">-</span><span class="dv">5</span>:<span class="dv">7</span>]</span>
+<span id="cb7-156"><a href="#cb7-156" aria-hidden="true" tabindex="-1"></a>cs_se <span class="op">=</span> boot[[c <span class="cf">for</span> c <span class="kw">in</span> boot.columns <span class="cf">if</span> c <span class="op">!=</span> <span class="st">"overall"</span>]].std().loc[<span class="op">-</span><span class="dv">5</span>:<span class="dv">7</span>]</span>
+<span id="cb7-157"><a href="#cb7-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-158"><a href="#cb7-158" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">4.5</span>))</span>
+<span id="cb7-159"><a href="#cb7-159" aria-hidden="true" tabindex="-1"></a>ax.plot(truth_by_e.loc[:<span class="dv">7</span>].index, truth_by_e.loc[:<span class="dv">7</span>], <span class="st">"k-"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"truth"</span>)</span>
+<span id="cb7-160"><a href="#cb7-160" aria-hidden="true" tabindex="-1"></a>ax.errorbar(es_tab.rel_time <span class="op">-</span> <span class="fl">0.12</span>, es_tab.coef, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> es_tab.se, fmt<span class="op">=</span><span class="st">"s"</span>, capsize<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"dynamic TWFE"</span>)</span>
+<span id="cb7-161"><a href="#cb7-161" aria-hidden="true" tabindex="-1"></a>ax.errorbar(cs_e.index <span class="op">+</span> <span class="fl">0.12</span>, cs_e, yerr<span class="op">=</span><span class="fl">1.96</span> <span class="op">*</span> cs_se, fmt<span class="op">=</span><span class="st">"o"</span>, capsize<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Callaway-Sant'Anna"</span>)</span>
+<span id="cb7-162"><a href="#cb7-162" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, c<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>)<span class="op">;</span> ax.axvline(<span class="op">-</span><span class="fl">0.5</span>, ls<span class="op">=</span><span class="st">"--"</span>, c<span class="op">=</span><span class="st">"grey"</span>)</span>
+<span id="cb7-163"><a href="#cb7-163" aria-hidden="true" tabindex="-1"></a>ax.<span class="bu">set</span>(title<span class="op">=</span><span class="st">"Event-study estimates vs truth"</span>, xlabel<span class="op">=</span><span class="st">"periods relative to adoption"</span>, ylabel<span class="op">=</span><span class="st">"effect on KPI"</span>)</span>
+<span id="cb7-164"><a href="#cb7-164" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> plt.show()</span>
+<span id="cb7-165"><a href="#cb7-165" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb7-166"><a href="#cb7-166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-167"><a href="#cb7-167" aria-hidden="true" tabindex="-1"></a>In @fig-staggered-event-study and @tbl-staggered-overall, static TWFE understates the average effect: later periods for early adopters get absorbed as "control" variation. The dynamic TWFE event study does better in the middle of the window (a large never-treated group helps), but look at the binned endpoints (−5 and +7): they pool many heterogeneous periods and come out biased, and the spurious −5 lead could be misread as a pre-trend. More generally, Sun &amp; Abraham show TWFE lead/lag coefficients mix in effects from other periods whenever effects are heterogeneous across cohorts. Callaway–Sant'Anna tracks the truth because every comparison is a clean 2×2.</span>
+<span id="cb7-168"><a href="#cb7-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-169"><a href="#cb7-169" aria-hidden="true" tabindex="-1"></a>Pre-period CS estimates (negative event times) are placebo tests of parallel trends for each cohort.</span>
+<span id="cb7-170"><a href="#cb7-170" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-171"><a href="#cb7-171" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Practical notes: rollout event studies"}</span>
+<span id="cb7-172"><a href="#cb7-172" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Prefer **heterogeneity-robust estimators**: Callaway–Sant'Anna, Sun–Abraham (interaction-weighted), Borusyak–Jaravel–Spiess imputation, or stacked DiD.</span>
+<span id="cb7-173"><a href="#cb7-173" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Use **not-yet-treated** units as controls when there is no never-treated group (and sometimes even when there is — they're often more comparable).</span>
+<span id="cb7-174"><a href="#cb7-174" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Rollout order is rarely random: if markets with the best expected gains go first, cohorts differ systematically. Check pre-trends **by cohort**.</span>
+<span id="cb7-175"><a href="#cb7-175" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Event-time estimates far from zero are identified from fewer cohorts — show cohort composition or trim the window.</span>
+<span id="cb7-176"><a href="#cb7-176" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Libraries: <span class="in">`csdid`</span> (Python port of R <span class="in">`did`</span>), <span class="in">`differences`</span>, <span class="in">`pyfixest`</span> (<span class="in">`did2s`</span>, saturated event studies), <span class="in">`linearmodels`</span>.</span>
+<span id="cb7-177"><a href="#cb7-177" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-178"><a href="#cb7-178" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-179"><a href="#cb7-179" aria-hidden="true" tabindex="-1"></a><span class="ot">[^car]: </span>CAR: cumulative abnormal return, the sum of a firm's abnormal returns over a window. CAAR is its average across firms.</span>
+<span id="cb7-180"><a href="#cb7-180" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-181"><a href="#cb7-181" aria-hidden="true" tabindex="-1"></a><span class="fu">## Check your understanding</span></span>
+<span id="cb7-182"><a href="#cb7-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-183"><a href="#cb7-183" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="Why does static TWFE go wrong with staggered adoption?" collapse="true"}</span>
+<span id="cb7-184"><a href="#cb7-184" aria-hidden="true" tabindex="-1"></a>Already-treated units serve as controls for later adopters. When effects grow over time, those controls are still changing because of treatment, which contaminates the comparison.</span>
+<span id="cb7-185"><a href="#cb7-185" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-186"><a href="#cb7-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-187"><a href="#cb7-187" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip title="What does the pre-event window <span class="co">[</span><span class="ot">−5, −1</span><span class="co">]</span> tell you in the financial event study?" collapse="true"}</span>
+<span id="cb7-188"><a href="#cb7-188" aria-hidden="true" tabindex="-1"></a>It is a placebo window. A significant abnormal return there points to information leakage or a mis-dated event.</span>
+<span id="cb7-189"><a href="#cb7-189" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb7-190"><a href="#cb7-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-191"><a href="#cb7-191" aria-hidden="true" tabindex="-1"></a>::: {.callout-important title="Try it"}</span>
+<span id="cb7-192"><a href="#cb7-192" aria-hidden="true" tabindex="-1"></a>In the staggered-panel cell set <span class="in">`growth=0.0`</span> and re-render. How much of the gap between static TWFE and Callaway–Sant'Anna remains once effects no longer grow?</span>
+<span id="cb7-193"><a href="#cb7-193" aria-hidden="true" tabindex="-1"></a>:::</span>
+</code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
+
+
+
+
+</body></html>
